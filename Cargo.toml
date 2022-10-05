@@ -1,8 +1,14 @@
 [package]
-name = "packetSwiffer"
+name = "swiffer"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "packet_swiffer"
+path = "src/lib/lib.rs"
 
 [dependencies]
+dns-parser = "0.8.0"
+
+[dependencies.pnet]
+version = "0.30.0"
