@@ -1,3 +1,5 @@
+pub mod tui;
+
 pub mod parsing_utils {
     use pnet::datalink::{self, NetworkInterface};
 

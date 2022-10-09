@@ -7,37 +7,30 @@ use std::process;
 use std::sync::mpsc::channel;
 use cursive::Cursive;
 use cursive::event::{Callback, EventTrigger};
+use cursive::reexports::crossbeam_channel::{crossbeam_channel_internal, Sender, unbounded};
 use cursive::traits::{Nameable, Scrollable};
 use cursive::view::{ScrollStrategy, SizeConstraint};
 
 use packet_swiffer::parsing_utils::handle_ethernet_frame;
-
-use cursive::views::{TextView, LinearLayout, Panel, BoxedView, ResizedView, Dialog};
+use packet_swiffer::tui;
+use packet_swiffer::tui::tui::Tui;
 
 fn main() {
     use pnet::datalink::Channel::Ethernet;
 
-    // Creating the tui
-    let mut siv = cursive::default();
-    let sink = siv.cb_sink().clone();
-    siv.add_global_callback('q', |s| quit(s));
+    // TODO: handle all arguments with clap
+    let ui_flag = match env::args().nth(2) {
+        Some(str) => str == "--tui".to_string(),
+        None => false
+    };
 
-    siv.add_fullscreen_layer(
-        ResizedView::with_full_width(
-            LinearLayout::vertical().child(
-                Panel::new(
-                    TextView::new("")
-                        .with_name("main")
-                        .scrollable()
-                        .scroll_strategy(ScrollStrategy::StickToBottom)
-                )
-            ).child(
-                Panel::new(
-                    TextView::new("Press q to quit.").with_name("info")
-                )
-            )
-        )
-    );
+    // Creating the tui
+    let mut tui = Tui::new(ui_flag);
+    let sink = match tui.is_used() {
+        true => tui.get_cloned_sink(),
+        false => unbounded().0
+    };
+    if ui_flag { tui.draw(); }
 
     let iface_name = match env::args().nth(1) {
         Some(n) => n,
@@ -81,20 +74,23 @@ fn main() {
     });
 
     let cloned_interface = interface.clone();
+    let thread_ui_flag = ui_flag.clone();
     // Thread needed to perform parsing of received packet
     let parsing_thread = thread::spawn(move | | {
         // TODO: add macos/ios support
         // TODO: handle filters
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &EthernetPacket::new(&p).unwrap());
-            // println!("{}", packet_string);
-            // The sink send the callback to the main thread, where it is executed
-            // TODO: this generates too many callbacks in the main thread, leading to the interface
-            // TODO: lagging. We may need to decrease callbacks by sending packets in bundles
-            sink.send(Box::new(move |s| {
-                let mut packet_view = s.find_name::<TextView>("main").unwrap();
-                packet_view.append(format!("\n{}", packet_string));
-            })).unwrap();
+            if thread_ui_flag {
+                // The sink send the callback to the main thread, where it is executed
+                // TODO: this generates too many callbacks in the main thread, leading to the interface
+                // TODO: lagging. We may need to decrease callbacks by sending packets in bundles
+                sink.send(Box::new(move |s|
+                    Tui::append_to_TextView(s, "main", format!("\n{}", packet_string))
+                )).unwrap();
+            } else {
+                println!("{}", packet_string);
+            }
         }
     });
 
@@ -103,18 +99,11 @@ fn main() {
 
     });
 
-    siv.run();
-
-    // joining the threads as a last thing to do
-    // sniffing_thread.join().unwrap();
-    // parsing_thread.join().unwrap();
-    // report_thread.join().unwrap();
-}
-
-fn quit(siv: &mut Cursive) {
-    siv.add_layer(Dialog::around(TextView::new("Do you really want to stop the sniffing?"))
-        .title("Exit?")
-        .button("Quit", |s| s.quit())
-        .button("Cancel", |s| { s.pop_layer(); })
-    );
+    if ui_flag { tui.run(); }
+    else {
+        // joining the threads as a last thing to do
+        sniffing_thread.join().unwrap();
+        parsing_thread.join().unwrap();
+        report_thread.join().unwrap();
+    }
 }
