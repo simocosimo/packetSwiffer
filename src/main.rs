@@ -1,19 +1,13 @@
 use pnet::datalink::{self, NetworkInterface};
-use pnet::packet::ethernet::{EtherTypes, EthernetPacket, MutableEthernetPacket};
+use pnet::packet::ethernet::EthernetPacket;
 
 use std::{env, thread};
-use std::fmt::format;
 use std::process;
 use std::sync::mpsc::channel;
-use cursive::Cursive;
-use cursive::event::{Callback, EventTrigger};
-use cursive::reexports::crossbeam_channel::{crossbeam_channel_internal, Sender, unbounded};
-use cursive::traits::{Nameable, Scrollable};
-use cursive::view::{ScrollStrategy, SizeConstraint};
+use cursive::reexports::crossbeam_channel::unbounded;
 
 use packet_swiffer::parsing_utils::handle_ethernet_frame;
-use packet_swiffer::tui;
-use packet_swiffer::tui::tui::Tui;
+use packet_swiffer::tui::Tui;
 
 fn main() {
     use pnet::datalink::Channel::Ethernet;
@@ -60,9 +54,6 @@ fn main() {
 
     // Channel used to pass packets between sniffing thread and parsing thread
     let (tx_thread, rx_thread) = channel::<Vec<u8>>();
-
-    // Channel to send parsed packets to ui
-    let (tx_ui, rx_ui) = channel::<String>();
 
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
