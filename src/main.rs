@@ -2,13 +2,42 @@ use pnet::datalink::{self, NetworkInterface};
 use pnet::packet::ethernet::{EtherTypes, EthernetPacket, MutableEthernetPacket};
 
 use std::{env, thread};
+use std::fmt::format;
 use std::process;
 use std::sync::mpsc::channel;
+use cursive::Cursive;
+use cursive::event::{Callback, EventTrigger};
+use cursive::traits::{Nameable, Scrollable};
+use cursive::view::{ScrollStrategy, SizeConstraint};
 
 use packet_swiffer::parsing_utils::handle_ethernet_frame;
 
+use cursive::views::{TextView, LinearLayout, Panel, BoxedView, ResizedView, Dialog};
+
 fn main() {
     use pnet::datalink::Channel::Ethernet;
+
+    // Creating the tui
+    let mut siv = cursive::default();
+    let sink = siv.cb_sink().clone();
+    siv.add_global_callback('q', |s| quit(s));
+
+    siv.add_fullscreen_layer(
+        ResizedView::with_full_width(
+            LinearLayout::vertical().child(
+                Panel::new(
+                    TextView::new("")
+                        .with_name("main")
+                        .scrollable()
+                        .scroll_strategy(ScrollStrategy::StickToBottom)
+                )
+            ).child(
+                Panel::new(
+                    TextView::new("Press q to quit.").with_name("info")
+                )
+            )
+        )
+    );
 
     let iface_name = match env::args().nth(1) {
         Some(n) => n,
@@ -39,6 +68,9 @@ fn main() {
     // Channel used to pass packets between sniffing thread and parsing thread
     let (tx_thread, rx_thread) = channel::<Vec<u8>>();
 
+    // Channel to send parsed packets to ui
+    let (tx_ui, rx_ui) = channel::<String>();
+
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
         // TODO: add a mechanism to stop/resume packet sniffing
@@ -55,7 +87,14 @@ fn main() {
         // TODO: handle filters
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &EthernetPacket::new(&p).unwrap());
-            println!("{}", packet_string);
+            // println!("{}", packet_string);
+            // The sink send the callback to the main thread, where it is executed
+            // TODO: this generates too many callbacks in the main thread, leading to the interface
+            // TODO: lagging. We may need to decrease callbacks by sending packets in bundles
+            sink.send(Box::new(move |s| {
+                let mut packet_view = s.find_name::<TextView>("main").unwrap();
+                packet_view.append(format!("\n{}", packet_string));
+            })).unwrap();
         }
     });
 
@@ -64,54 +103,18 @@ fn main() {
 
     });
 
-    // joining the threads as a last thing to do
-    sniffing_thread.join().unwrap();
-    parsing_thread.join().unwrap();
-    report_thread.join().unwrap();
+    siv.run();
 
-    // loop {
-    //     let mut buf: [u8; 1600] = [0u8; 1600];
-    //     let mut fake_ethernet_frame = MutableEthernetPacket::new(&mut buf[..]).unwrap();
-    //     match rx.next() {
-    //         Ok(packet) => {
-    //             let payload_offset;
-    //             if cfg!(any(target_os = "macos", target_os = "ios"))
-    //                 && interface.is_up()
-    //                 && !interface.is_broadcast()
-    //                 && ((!interface.is_loopback() && interface.is_point_to_point())
-    //                 || interface.is_loopback())
-    //             {
-    //                 if interface.is_loopback() {
-    //                     // The pnet code for BPF loopback adds a zero'd out Ethernet header
-    //                     payload_offset = 14;
-    //                 } else {
-    //                     // Maybe is TUN interface
-    //                     payload_offset = 0;
-    //                 }
-    //                 if packet.len() > payload_offset {
-    //                     let version = Ipv4Packet::new(&packet[payload_offset..])
-    //                         .unwrap()
-    //                         .get_version();
-    //                     if version == 4 {
-    //                         fake_ethernet_frame.set_destination(MacAddr(0, 0, 0, 0, 0, 0));
-    //                         fake_ethernet_frame.set_source(MacAddr(0, 0, 0, 0, 0, 0));
-    //                         fake_ethernet_frame.set_ethertype(EtherTypes::Ipv4);
-    //                         fake_ethernet_frame.set_payload(&packet[payload_offset..]);
-    //                         handle_ethernet_frame(&interface, &fake_ethernet_frame.to_immutable());
-    //                         continue;
-    //                     } else if version == 6 {
-    //                         fake_ethernet_frame.set_destination(MacAddr(0, 0, 0, 0, 0, 0));
-    //                         fake_ethernet_frame.set_source(MacAddr(0, 0, 0, 0, 0, 0));
-    //                         fake_ethernet_frame.set_ethertype(EtherTypes::Ipv6);
-    //                         fake_ethernet_frame.set_payload(&packet[payload_offset..]);
-    //                         handle_ethernet_frame(&interface, &fake_ethernet_frame.to_immutable());
-    //                         continue;
-    //                     }
-    //                 }
-    //             }
-    //             handle_ethernet_frame(&interface, &EthernetPacket::new(packet).unwrap());
-    //         }
-    //         Err(e) => panic!("packetdump: unable to receive packet: {}", e),
-    //     }
-    // }
+    // joining the threads as a last thing to do
+    // sniffing_thread.join().unwrap();
+    // parsing_thread.join().unwrap();
+    // report_thread.join().unwrap();
+}
+
+fn quit(siv: &mut Cursive) {
+    siv.add_layer(Dialog::around(TextView::new("Do you really want to stop the sniffing?"))
+        .title("Exit?")
+        .button("Quit", |s| s.quit())
+        .button("Cancel", |s| { s.pop_layer(); })
+    );
 }
