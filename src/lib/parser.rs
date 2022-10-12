@@ -60,31 +60,29 @@ fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr,
 
     match parsed_icmp {
         Ok(tuple) => {
-            let _payload = tuple.0;
+            let payload = tuple.0;
             let header = tuple.1;
             match header.code {
                 IcmpCode::EchoReply => {
-                    // TODO: parse echo reply packet for seq and id
-                    // let echo_reply_packet = echo_reply::EchoReplyPacket::new(packet).unwrap();
+                    let icmp_seq = payload[3];
+                    // DONE: parse echo reply packet for seq and id
                     format!(
-                        "[{}]: ICMP echo reply {} -> {} (seq=?, id=?)",
+                        "[{}]: ICMP echo reply {} -> {}, icmp_seq= {}",
                         interface_name,
                         source,
                         destination,
-                        // echo_reply_packet.get_sequence_number(),
-                        // echo_reply_packet.get_identifier()
+                        icmp_seq
                     )
                 },
                 IcmpCode::EchoRequest => {
-                    // TODO: parse echo request packet for seq and id
-                    // let echo_request_packet = echo_request::EchoRequestPacket::new(packet).unwrap();
+                    // DONE: parse echo request packet for seq and id
+                    let icmp_seq = payload[3];
                     format!(
-                        "[{}]: ICMP echo request {} -> {} (seq=?, id=?)",
+                        "[{}]: ICMP echo reply {} -> {}, icmp_seq= {}",
                         interface_name,
                         source,
                         destination,
-                        // echo_request_packet.get_sequence_number(),
-                        // echo_request_packet.get_identifier()
+                        icmp_seq
                     )
                 },
                 _ => {
