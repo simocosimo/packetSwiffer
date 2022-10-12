@@ -11,3 +11,17 @@ path = "src/lib/lib.rs"
 dns-parser = "0.8.0"
 pcap = "0.11.0"
 pktparse = "0.7.1"
+
+[dependencies.cursive]
+version = "0.20.0"
+default-features = false
+
+# If macOS: 'cargo build'
+# If linux/win: 'cargo build --no-default-features --features "crossterm-backend"'
+[features]
+default = ["ncurses-backend"]
+ncurses-backend = ["cursive/ncurses-backend"]
+# pancurses-backend = ["cursive/pancurses-backend"]
+# termion-backend = ["cursive/termion-backend"]
+crossterm-backend = ["cursive/crossterm-backend"]
+# blt-backend = ["cursive/blt-backend"]

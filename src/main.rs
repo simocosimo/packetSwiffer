@@ -1,11 +1,27 @@
 use std::{env, thread};
 use std::process;
 use std::sync::mpsc::channel;
+use cursive::reexports::crossbeam_channel::unbounded;
 
+use packet_swiffer::tui::Tui;
 use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
 
 fn main() {
+
+    // TODO: handle all arguments with clap
+    let ui_flag = match env::args().nth(3) {
+        Some(str) => str == "--tui".to_string(),
+        None => false
+    };
+
+    // Creating the tui
+    let mut tui = Tui::new(ui_flag);
+    let sink = match tui.is_used() {
+        true => tui.get_cloned_sink(),
+        false => unbounded().0
+    };
+    if ui_flag { tui.draw(); }
 
     let interface_name = match env::args().nth(1) {
         Some(n) => n,
@@ -49,14 +65,23 @@ fn main() {
         }
     });
 
+    let thread_ui_flag = ui_flag.clone();
     // Thread needed to perform parsing of received packet
     let parsing_thread = thread::spawn(move | | {
         // TODO: add macos/ios support
         // TODO: handle filters
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
-            // let packet_string = &p[0..10];
-            println!("{}", packet_string);
+            if thread_ui_flag {
+                // The sink send the callback to the main thread, where it is executed
+                // TODO: this generates too many callbacks in the main thread, leading to the interface
+                // TODO: lagging. We may need to decrease callbacks by sending packets in bundles
+                sink.send(Box::new(move |s|
+                    Tui::append_to_TextView(s, "main", format!("\n{}", packet_string))
+                )).unwrap();
+            } else {
+                println!("{}", packet_string);
+            }
         }
     });
 
@@ -65,8 +90,11 @@ fn main() {
 
     });
 
-    // joining the threads as a last thing to do
-    sniffing_thread.join().unwrap();
-    parsing_thread.join().unwrap();
-    report_thread.join().unwrap();
+    if ui_flag { tui.run(); }
+    else {
+        // joining the threads as a last thing to do
+        sniffing_thread.join().unwrap();
+        parsing_thread.join().unwrap();
+        report_thread.join().unwrap();
+    }
 }
