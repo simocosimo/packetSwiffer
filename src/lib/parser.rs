@@ -17,27 +17,39 @@ fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
 
     match parsed_udp {
         Ok(tuple) => {
-            let _payload = tuple.0;
+            let payload = tuple.0;
             let header = tuple.1;
-            format!(
-                "[{}]: UDP Packet: {}:{} > {}:{}; length: {}",
-                interface_name,
-                source,
-                header.source_port,
-                destination,
-                header.dest_port,
-                header.length
-            )
 
-            // TODO: use dns_parser and extract the useful info about the packet (hostname, resolved ip, ...)
-            // match dns_parser::Packet::parse(udp.payload()) {
-            //     Ok(packet) => {
-            //         println!("{:?}", packet);
-            //     }
-            //     Err(_) => {
-            //         println!("Not a DNS packet");
-            //     }
-            // }
+            // DONE: use dns_parser and extract the useful info about the packet (hostname, resolved ip, ...)
+            match dns_parser::Packet::parse(payload) {
+                Ok(dns_packet) => {
+                    format!(
+                        "[{}]: UDP Packet: {}:{} > {}:{}; length: {} -> DNS Query: {:?}",
+                        interface_name,
+                        source,
+                        header.source_port,
+                        destination,
+                        header.dest_port,
+                        header.length,
+                        dns_packet.questions.iter().map(|q| { q.qname.to_string() }).collect::<Vec<String>>().join(", ")
+                    )
+                }
+                Err(_) => {
+                    format!(
+                        "[{}]: UDP Packet: {}:{} > {}:{}; length: {} -> Not a DNS Packet",
+                        interface_name,
+                        source,
+                        header.source_port,
+                        destination,
+                        header.dest_port,
+                        header.length,
+                    )
+                }
+            }
+
+
+
+
         },
         Err(_) => "[err]: Couldn't parse ICMP packet".to_string()
     }
