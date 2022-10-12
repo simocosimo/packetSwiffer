@@ -15,6 +15,9 @@ fn main() {
         }
     };
 
+    let promisc_mode = env::args().nth(2) == Some("--promisc".to_string());
+    println!("Promisc mode: {}", promisc_mode);
+
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
     let interface = interfaces
@@ -29,8 +32,9 @@ fn main() {
 
     // Setting up pcap capture
     let mut cap = Capture::from_device(interface).unwrap()
-        .promisc(true)
-        .timeout(10)    // this is needed to read packets in real time
+        .promisc(promisc_mode)
+        // .timeout(10)    // this is needed to read packets in real time
+        .immediate_mode(true)
         .open().unwrap();
 
     // Channel used to pass packets between sniffing thread and parsing thread
