@@ -131,15 +131,42 @@ fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
         Ok(tuple) => {
             let _payload = tuple.0;
             let header = tuple.1;
+            let mut app_layer = String::from("unknown");
+
+            match  header.dest_port {
+                80 => app_layer = "http".to_string(),
+                443 => app_layer = "https".to_string(),
+                21 => app_layer = "ssh".to_string(),
+                23 => app_layer = "telnet".to_string(),
+                25 => app_layer = "smtp".to_string(),
+                110 => app_layer = "POP3".to_string(),
+                143 => app_layer = "IMAP".to_string(),
+                194 => app_layer = "IRC".to_string(),
+                _ => app_layer = "unknown".to_string()
+            }
+
+            match  header.source_port {
+                80 => app_layer = "http".to_string(),
+                443 => app_layer = "https".to_string(),
+                21 => app_layer = "ssh".to_string(),
+                23 => app_layer = "telnet".to_string(),
+                25 => app_layer = "smtp".to_string(),
+                110 => app_layer = "POP3".to_string(),
+                143 => app_layer = "IMAP".to_string(),
+                194 => app_layer = "IRC".to_string(),
+                _ => app_layer = "unknown".to_string()
+            }
+
             format!(
-                "[{}]: TCP Packet: {}:{} > {}:{}; sequence no: {} length: {}",
+                "[{}]: TCP Packet: {}:{} > {}:{}; sequence no: {} length: {}; application layer: {} ",
                 interface_name,
                 source,
                 header.source_port,
                 destination,
                 header.dest_port,
                 header.sequence_no,
-                packet.len()
+                packet.len(),
+                app_layer
             )
         },
         Err(_) => "[err]: Couldn't parse TCP packet".to_string()
