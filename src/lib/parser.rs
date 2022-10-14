@@ -11,6 +11,7 @@ use pktparse::tcp::parse_tcp_header;
 use pktparse::udp::parse_udp_header;
 
 use crate::utils;
+use crate::utils::tcp_l7;
 
 fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> String {
     let parsed_udp = parse_udp_header(packet);
@@ -24,19 +25,19 @@ fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
             match dns_parser::Packet::parse(payload) {
                 Ok(dns_packet) => {
                     format!(
-                        "[{}]: UDP Packet: {}:{} > {}:{}; length: {} -> DNS Query: {:?}",
+                        "[{}]: UDP Packet: {}:{} > {}:{} ({}); length: {}",
                         interface_name,
                         source,
                         header.source_port,
                         destination,
                         header.dest_port,
-                        header.length,
-                        dns_packet.questions.iter().map(|q| { q.qname.to_string() }).collect::<Vec<String>>().join(", ")
+                        dns_packet.questions.iter().map(|q| { q.qname.to_string() }).collect::<Vec<String>>().join(", "),
+                        header.length
                     )
                 }
                 Err(_) => {
                     format!(
-                        "[{}]: UDP Packet: {}:{} > {}:{}; length: {} -> Not a DNS Packet",
+                        "[{}]: UDP Packet: {}:{} > {}:{}; length: {}",
                         interface_name,
                         source,
                         header.source_port,
@@ -123,39 +124,12 @@ fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr,
 fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> String {
     let parsed_tcp = parse_tcp_header(packet);
 
-    // TODO: implement tls_parser, to get info about tls records
-    // TODO: implement httparse, to get info about http packets
-    // TODO: how do we distinguish the packets?
-
     match parsed_tcp {
         Ok(tuple) => {
             let _payload = tuple.0;
             let header = tuple.1;
-            let mut app_layer = String::from("unknown");
-
-            match  header.dest_port {
-                80 => app_layer = "http".to_string(),
-                443 => app_layer = "https".to_string(),
-                21 => app_layer = "ssh".to_string(),
-                23 => app_layer = "telnet".to_string(),
-                25 => app_layer = "smtp".to_string(),
-                110 => app_layer = "POP3".to_string(),
-                143 => app_layer = "IMAP".to_string(),
-                194 => app_layer = "IRC".to_string(),
-                _ => app_layer = "unknown".to_string()
-            }
-
-            match  header.source_port {
-                80 => app_layer = "http".to_string(),
-                443 => app_layer = "https".to_string(),
-                21 => app_layer = "ssh".to_string(),
-                23 => app_layer = "telnet".to_string(),
-                25 => app_layer = "smtp".to_string(),
-                110 => app_layer = "POP3".to_string(),
-                143 => app_layer = "IMAP".to_string(),
-                194 => app_layer = "IRC".to_string(),
-                _ => app_layer = "unknown".to_string()
-            }
+            // DONE: L7 recognised from TCP Header
+            let app_layer = tcp_l7(header.dest_port);
 
             format!(
                 "[{}]: TCP Packet: {}:{} > {}:{}; sequence no: {} length: {}; application layer: {} ",
@@ -180,8 +154,6 @@ fn handle_transport_protocol(
     protocol: IPProtocol,
     packet: &[u8],
 ) -> String {
-    // TODO: if this computation is done here, maybe I can pass to called functions
-    // TODO: just the already extracted address
 
     match protocol {
         IPProtocol::UDP => {
