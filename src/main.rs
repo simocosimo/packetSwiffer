@@ -2,7 +2,6 @@ use timer;
 use chrono;
 
 use std::{env, thread};
-use std::fmt::format;
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
