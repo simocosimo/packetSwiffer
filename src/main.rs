@@ -1,6 +1,14 @@
+use timer;
+use chrono;
+
 use std::{env, thread};
 use std::process;
+use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
+
+use std::fs::File;
+use std::path::Path;
+use std::io::Write;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
@@ -40,6 +48,10 @@ fn main() {
     // Channel used to pass packets between sniffing thread and parsing thread
     let (tx_thread, rx_thread) = channel::<Vec<u8>>();
 
+    // Channel used to pass parsed packets to the report_thread
+    // TODO: is string the best structure? Don't think so, maybe a custom one is better
+    let (tx_report, rx_report) = channel::<String>();
+
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
         // TODO: add a mechanism to stop/resume packet sniffing
@@ -57,12 +69,52 @@ fn main() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
             // let packet_string = &p[0..10];
             println!("{}", packet_string);
+            tx_report.send(packet_string).unwrap();
         }
     });
 
+    // TODO: temporary shared data to test report generation
+    let timer_flag = Arc::new(Mutex::new(false));
+
     // TODO: create thread that analyze packets and produce report (synch should be done with mutex on structure)
     let report_thread = thread::spawn(move | | {
+        let timer = timer::Timer::new();
+        let mut index = 0;
+        loop {
+            let mut buffer = Vec::<String>::new();
+            let timer_flag_clone = timer_flag.clone();
+            let pathname = format!("report-{}.txt", index);
+            let path = Path::new(&pathname);
+            let _guard = timer.schedule_with_delay(chrono::Duration::seconds(10), move | | {
+                let mut flag = timer_flag_clone.lock().unwrap();
+                *flag = true;
+            });
+            while let Ok(packet) = rx_report.recv() {
+                // TODO: here we should aggregate info about the traffic in a smart way
+                let tmp_string = String::from(format!("REPORT: {}", packet));
+                buffer.push(tmp_string);
+                let mut flag = timer_flag.lock().unwrap();
+                if *flag {
+                    *flag = false;
+                    drop(flag);
+                    break;
+                }
+                drop(flag);
+            }
+            // TODO: create a file for every report, just temporary, discuss better solutions
+            // Write info on report file
+            let mut file = match File::create(&path) {
+                Err(why) => panic!("couldn't create {}: {}", path.display(), why),
+                Ok(file) => file,
+            };
 
+            writeln!(&mut file, "Report #{}", index).unwrap();
+            for s in buffer {
+                writeln!(&mut file, "{}", s).unwrap();
+            }
+            println!("[{}] Report #{} generated", chrono::offset::Local::now(), index);
+            index += 1;
+        }
     });
 
     // joining the threads as a last thing to do
