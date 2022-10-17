@@ -3,18 +3,19 @@ use chrono;
 
 use std::{env, thread};
 use std::process;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::channel;
 
 use std::fs::File;
 use std::path::Path;
 use std::io::Write;
+use std::io;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
 
 fn main() {
-
+    
     let interface_name = match env::args().nth(1) {
         Some(n) => n,
         None => {
@@ -22,6 +23,7 @@ fn main() {
             process::exit(1);
         }
     };
+    
 
     let promisc_mode = env::args().nth(2) == Some("--promisc".to_string());
     println!("Promisc mode: {}", promisc_mode);
@@ -52,12 +54,47 @@ fn main() {
     // TODO: is string the best structure? Don't think so, maybe a custom one is better
     let (tx_report, rx_report) = channel::<String>();
 
+    let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    let pair2 = Arc::clone(&pair);
+
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
-        // TODO: add a mechanism to stop/resume packet sniffing
+        let (lock, cvar) = &*pair;
+        println!("Premi il tasto P per mettere in pausa lo sniffing");
         while let Ok(packet) = cap.next_packet() {
+            let _guard = cvar.wait_while(lock.lock().unwrap(), |pause| {*pause}).unwrap(); 
             let owned_packet = packet.to_owned();
             tx_thread.send(owned_packet.to_vec()).unwrap();
+        }
+    });
+
+    // Thread used to pause/resume
+    // Devo sempre restare in attesa di un carattere
+    let pause_thread = thread::spawn(move || {
+        let (lock, cvar) = &*pair2;
+        let mut buffer = String::new();
+        loop {
+            buffer.clear();
+            io::stdin().read_line(&mut buffer).expect("Failed to read line");
+            match buffer.as_str().trim() {
+                "P" => {
+                    // Acquisisci il lock e setta la condvar a true -- deve stoppare lo sniffing, quindi mandare pure una notifica all'altro thread
+                    let mut pause = lock.lock().unwrap();
+                    if *pause == true {
+                        *pause = false;
+                        println!("Sniffing ripreso!");
+                    }
+                    else {
+                        *pause = true;
+                        println!("Sniffing stoppato!");
+                    }
+                    io::stdout().flush().unwrap();
+                    cvar.notify_one();
+                    drop(lock);
+                }
+                _ => {}
+            }
+            
         }
     });
 
@@ -118,6 +155,7 @@ fn main() {
     });
 
     // joining the threads as a last thing to do
+    pause_thread.join().unwrap();
     sniffing_thread.join().unwrap();
     parsing_thread.join().unwrap();
     report_thread.join().unwrap();
