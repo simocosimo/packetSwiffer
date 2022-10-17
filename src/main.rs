@@ -56,14 +56,21 @@ fn main() {
 
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     let pair2 = Arc::clone(&pair);
+    let pair3 = Arc::clone(&pair);
+
 
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
         let (lock, cvar) = &*pair;
         println!("Premi il tasto P per mettere in pausa lo sniffing");
         while let Ok(packet) = cap.next_packet() {
-            let _guard = cvar.wait_while(lock.lock().unwrap(), |pause| {*pause}).unwrap(); 
             let owned_packet = packet.to_owned();
+            let _guard = cvar.wait_while(lock.lock().unwrap(), |pause| {*pause}).unwrap();
+            /*
+            Il problema sta nel fatto che se metto la wait while dentro il while blocco l'acquisizione
+            dei pacchetti. Devo provare cosa succede con un pacchetto ICMP (ping), in quanto vedo la sequenza
+            e quindi riesco a vedere cosa effettivamente manda: se manda in ordine oppure no
+            */
             tx_thread.send(owned_packet.to_vec()).unwrap();
         }
     });
@@ -80,6 +87,7 @@ fn main() {
                 "P" => {
                     // Acquisisci il lock e setta la condvar a true -- deve stoppare lo sniffing, quindi mandare pure una notifica all'altro thread
                     let mut pause = lock.lock().unwrap();
+                    println!("Controllo a pause_thread");
                     if *pause == true {
                         *pause = false;
                         println!("Sniffing ripreso!");
@@ -89,7 +97,7 @@ fn main() {
                         println!("Sniffing stoppato!");
                     }
                     io::stdout().flush().unwrap();
-                    cvar.notify_one();
+                    cvar.notify_all();
                     drop(lock);
                 }
                 _ => {}
@@ -115,6 +123,7 @@ fn main() {
 
     // TODO: create thread that analyze packets and produce report (synch should be done with mutex on structure)
     let report_thread = thread::spawn(move | | {
+        let (lock, cvar) = &*pair3;
         let timer = timer::Timer::new();
         let mut index = 0;
         loop {
@@ -122,7 +131,8 @@ fn main() {
             let timer_flag_clone = timer_flag.clone();
             let pathname = format!("report-{}.txt", index);
             let path = Path::new(&pathname);
-            let _guard = timer.schedule_with_delay(chrono::Duration::seconds(10), move | | {
+            let _guard_cvar = cvar.wait_while(lock.lock().unwrap(), |pause| {*pause}).unwrap();
+            let _guard_timer = timer.schedule_with_delay(chrono::Duration::seconds(10), move | | {
                 let mut flag = timer_flag_clone.lock().unwrap();
                 *flag = true;
             });
