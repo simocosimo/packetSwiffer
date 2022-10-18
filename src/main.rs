@@ -92,8 +92,7 @@ fn main() {
                         println!("Sniffing stoppato!");
                     }
                     io::stdout().flush().unwrap();
-                    cvar.notify_one();
-                    drop(lock);
+                    drop(pause);
                 }
                 _ => {}
             }
@@ -116,6 +115,7 @@ fn main() {
     // TODO: temporary shared data to test report generation
     let timer_flag = Arc::new(Mutex::new(false));
 
+
     // TODO: create thread that analyze packets and produce report (synch should be done with mutex on structure)
     let report_thread = thread::spawn(move | | {
         let timer = timer::Timer::new();
@@ -127,23 +127,24 @@ fn main() {
             let pathname = format!("report-{}.txt", index);
             let path = Path::new(&pathname);
             let _guard_timer = timer.schedule_with_delay(chrono::Duration::seconds(10), move || {
+                // Prendi pause lock
+                // Controlla se pause == true
+                // Se si, drop(guard_timer)
                 let mut flag = timer_flag_clone.lock().unwrap();
-                *flag = true;    
+                *flag = true;
             });
+
             while let Ok(packet) = rx_report.recv() {
                 // TODO: here we should aggregate info about the traffic in a smart way
                 let tmp_string = String::from(format!("REPORT: {}", packet));
                 buffer.push(tmp_string);
                 let mut flag = timer_flag.lock().unwrap();
-                let mut pause = lock.lock().unwrap();
-                if *flag && !*pause{
+                if *flag{
                     *flag = false;
                     drop(flag);
-                    drop(lock);
                     break;
                 }
                 drop(flag);
-                drop(lock);
             }
             // TODO: create a file for every report, just temporary, discuss better solutions
             // Write info on report file
