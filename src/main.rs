@@ -1,7 +1,7 @@
 use timer;
 use chrono;
 
-use std::{env, thread};
+use std::thread;
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
@@ -12,22 +12,33 @@ use std::io::Write;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
+use packet_swiffer::args::Args;
+
+use clap::Parser;
 
 fn main() {
 
-    let interface_name = match env::args().nth(1) {
-        Some(n) => n,
-        None => {
-            eprintln!("USAGE: swiffer <NETWORK INTERFACE>");
-            process::exit(1);
-        }
-    };
-
-    let promisc_mode = env::args().nth(2) == Some("--promisc".to_string());
-    println!("Promisc mode: {}", promisc_mode);
+    let args = Args::parse();
+    let interface_name = args.interface;
+    let promisc_mode = args.promisc;
+    let report_delay = args.timeout;
+    let report_fm = args.filename;
+    let list_mode = args.list;
 
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
+
+    // Handle list mode
+    if list_mode {
+        println!("The following interfaces are available");
+        println!("{0: <20} | {1: <20}", "Name", "Description");
+        println!("---------------------------------------------------------------------");
+        interfaces.into_iter()
+            .for_each(|i| println!("{0: <20} | {1: <20}", i.name, i.desc.unwrap_or("None".to_string())));
+        process::exit(0);
+    }
+
+    println!("Promisc mode: {}", promisc_mode);
     let interface = interfaces
         .into_iter()
         .filter(|i| i.name == interface_name)
@@ -41,7 +52,6 @@ fn main() {
     // Setting up pcap capture
     let mut cap = Capture::from_device(interface).unwrap()
         .promisc(promisc_mode)
-        // .timeout(10)    // this is needed to read packets in real time
         .immediate_mode(true)
         .open().unwrap();
 
@@ -83,9 +93,10 @@ fn main() {
         loop {
             let mut buffer = Vec::<String>::new();
             let timer_flag_clone = timer_flag.clone();
-            let pathname = format!("report-{}.txt", index);
+            // TODO: maybe add timestamp to report filename? Or folder is better?
+            let pathname = format!("{}-{}.txt", report_fm, index);
             let path = Path::new(&pathname);
-            let _guard = timer.schedule_with_delay(chrono::Duration::seconds(10), move | | {
+            let _guard = timer.schedule_with_delay(chrono::Duration::seconds(report_delay), move | | {
                 let mut flag = timer_flag_clone.lock().unwrap();
                 *flag = true;
             });
