@@ -4,18 +4,22 @@ use clap::Parser;
 #[clap(author, version, about, long_about = None)]
 pub struct Args {
     /// Optional timeout for report generation (in seconds)
-    #[clap(short, long, default_value_t = 10)]
+    #[arg(short, long, default_value_t = 10)]
     pub timeout: i64,
 
     /// Optional filename for generated report (<filename>_<seq_num>.txt)
-    #[clap(short, long, default_value = "report")]
+    #[arg(short, long, default_value = "report")]
     pub filename: String,
 
     /// Name of the interface to be used for the sniffing
-    #[clap(short, long)]
+    #[arg(short, long)]
     pub interface: String,
 
     /// Set the interface in promiscuous mode
-    #[clap(short, long, action)]
-    pub promisc: bool
+    #[arg(short, long, action)]
+    pub promisc: bool,
+
+    /// Show the net interfaces present in the system without launching the sniffing
+    #[arg(short, long, action)]
+    pub list: bool
 }

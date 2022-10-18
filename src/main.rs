@@ -21,12 +21,24 @@ fn main() {
     let args = Args::parse();
     let interface_name = args.interface;
     let promisc_mode = args.promisc;
-    println!("Promisc mode: {}", promisc_mode);
     let report_delay = args.timeout;
     let report_fm = args.filename;
+    let list_mode = args.list;
 
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
+
+    // Handle list mode
+    if list_mode {
+        println!("The following interfaces are available");
+        println!("{0: <20} | {1: <20}", "Name", "Description");
+        println!("---------------------------------------------------------------------");
+        interfaces.into_iter()
+            .for_each(|i| println!("{0: <20} | {1: <20}", i.name, i.desc.unwrap_or("None".to_string())));
+        process::exit(0);
+    }
+
+    println!("Promisc mode: {}", promisc_mode);
     let interface = interfaces
         .into_iter()
         .filter(|i| i.name == interface_name)
@@ -40,7 +52,6 @@ fn main() {
     // Setting up pcap capture
     let mut cap = Capture::from_device(interface).unwrap()
         .promisc(promisc_mode)
-        // .timeout(10)    // this is needed to read packets in real time
         .immediate_mode(true)
         .open().unwrap();
 
