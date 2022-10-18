@@ -1,3 +1,4 @@
+use std::fmt;
 use std::net::IpAddr;
 use pcap::Device;
 
@@ -13,6 +14,51 @@ use pktparse::udp::parse_udp_header;
 use crate::utils;
 use crate::utils::tcp_l7;
 
+#[derive(Debug)]
+struct Packet {
+    interface: String,
+    src_addr: IpAddr,
+    dest_addr: IpAddr,
+    res_name: String,
+    src_port: Option<u16>,
+    dest_port: Option<u16>,
+    length: u16,
+    transport: String,
+    application: String,
+}
+
+impl Packet {
+    pub fn new(
+        interface: String,
+        src_addr: IpAddr,
+        dest_addr: IpAddr,
+        res_name: String,
+        src_port: Option<u16>,
+        dest_port: Option<u16>,
+        length: u16,
+        transport: String,
+        application: String,
+    ) -> Self {
+        Packet {
+            interface,
+            src_addr,
+            src_port,
+            dest_addr,
+            res_name,
+            dest_port,
+            length,
+            transport,
+            application,
+        }
+    }
+}
+impl fmt::Display for Packet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        //        "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n"
+        write!(f, "| {0: <2}\t| {1: <30}\t| {2: <5}\t| {3: <30} ({4}) \t| {5: <5}\t| {6: <17}\t|  {7: <3}\t| {8: <3} \t| {9}", self.interface, self.src_addr, self.src_port.unwrap_or(0), self.dest_addr, self.res_name, self.dest_port.unwrap_or(0), chrono::offset::Local::now(), self.length, self.transport, self.application)
+    }
+}
+
 fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> String {
     let parsed_udp = parse_udp_header(packet);
 
@@ -24,26 +70,35 @@ fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
             // DONE: use dns_parser and extract the useful info about the packet (hostname, resolved ip, ...)
             match dns_parser::Packet::parse(payload) {
                 Ok(dns_packet) => {
-                    format!(
-                        "[{}]: UDP Packet: {}:{} > {}:{} ({}); length: {}",
-                        interface_name,
+                    let p = Packet::new(
+                        interface_name.to_string(),
                         source,
-                        header.source_port,
                         destination,
-                        header.dest_port,
                         dns_packet.questions.iter().map(|q| { q.qname.to_string() }).collect::<Vec<String>>().join(", "),
-                        header.length
+                        Some(header.source_port),
+                        Some(header.dest_port),
+                        header.length,
+                        "UDP".to_string(),
+                        "unknown".to_string(),
+                    );
+                    format!(
+                        "{}", p
                     )
                 }
                 Err(_) => {
-                    format!(
-                        "[{}]: UDP Packet: {}:{} > {}:{}; length: {}",
-                        interface_name,
+                    let p = Packet::new(
+                        interface_name.to_string(),
                         source,
-                        header.source_port,
                         destination,
-                        header.dest_port,
+                        "none".to_string(),
+                        Some(header.source_port),
+                        Some(header.dest_port),
                         header.length,
+                        "UDP".to_string(),
+                        "unknown".to_string(),
+                    );
+                    format!(
+                        "{}", p
                     )
                 }
             }
@@ -61,39 +116,62 @@ fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr,
 
     match parsed_icmp {
         Ok(tuple) => {
-            let payload = tuple.0;
             let header = tuple.1;
             match header.code {
                 IcmpCode::EchoReply => {
-                    let icmp_seq = payload[3];
                     // DONE: parse echo reply packet for seq and id
-                    format!(
-                        "[{}]: ICMP echo reply {} -> {}, icmp_seq= {}",
-                        interface_name,
+                    let p = Packet::new(
+                        interface_name.to_string(),
                         source,
                         destination,
-                        icmp_seq
+                        "none".to_string(),
+                        None,
+                        None,
+                        64,
+                        "ICMP echo reply".to_string(),
+                        "unknown".to_string(),
+                    );
+
+                    format!(
+                        "{}", p
                     )
                 },
                 IcmpCode::EchoRequest => {
                     // DONE: parse echo request packet for seq and id
-                    let icmp_seq = payload[3];
-                    format!(
-                        "[{}]: ICMP echo reply {} -> {}, icmp_seq= {}",
-                        interface_name,
+                    let p = Packet::new(
+                        interface_name.to_string(),
                         source,
                         destination,
-                        icmp_seq
+                        "none".to_string(),
+                        None,
+                        None,
+                        64,
+                        "ICMP echo request".to_string(),
+                        "unknown".to_string(),
+                    );
+
+                    format!(
+                        "{}", p
                     )
                 },
                 _ => {
-                    format!(
-                        "[{}]: ICMP packet {} -> {} (type={:?})",
-                        interface_name,
+                    // DONE: parse echo reply packet for seq and id
+                    let p = Packet::new(
+                        interface_name.to_string(),
                         source,
                         destination,
-                        header.code
+                        "none".to_string(),
+                        None,
+                        None,
+                        64,
+                        "ICMP packet".to_string(),
+                        "unknown".to_string(),
+                    );
+
+                    format!(
+                        "{}", p
                     )
+
                 }
             }
         },
@@ -131,17 +209,18 @@ fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
             // DONE: L7 recognised from TCP Header
             let app_layer = tcp_l7(header.dest_port);
 
-            format!(
-                "[{}]: TCP Packet: {}:{} > {}:{}; sequence no: {} length: {}; application layer: {} ",
-                interface_name,
+            let p = Packet::new(
+                interface_name.to_string(),
                 source,
-                header.source_port,
                 destination,
-                header.dest_port,
-                header.sequence_no,
-                packet.len(),
-                app_layer
-            )
+                "none".to_string(),
+                Some(header.source_port),
+                Some(header.dest_port),
+                packet.len() as u16,
+                "TCP".to_string(),
+                app_layer,
+                );
+            format!("{}", p)
         },
         Err(_) => "[err]: Couldn't parse TCP packet".to_string()
     }

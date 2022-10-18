@@ -102,7 +102,7 @@ fn main() {
             });
             while let Ok(packet) = rx_report.recv() {
                 // TODO: here we should aggregate info about the traffic in a smart way
-                let tmp_string = String::from(format!("REPORT: {}", packet));
+                let tmp_string = String::from(format!("{}", packet));
                 buffer.push(tmp_string);
                 let mut flag = timer_flag.lock().unwrap();
                 if *flag {
@@ -119,7 +119,8 @@ fn main() {
                 Ok(file) => file,
             };
 
-            writeln!(&mut file, "Report #{}", index).unwrap();
+            writeln!(&mut file, "Report #{}\n", index).unwrap();
+            writeln!(&mut file, "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n").unwrap();
             for s in buffer {
                 writeln!(&mut file, "{}", s).unwrap();
             }
