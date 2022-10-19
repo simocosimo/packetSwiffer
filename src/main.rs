@@ -11,7 +11,7 @@ use std::path::Path;
 use std::io::Write;
 
 use pcap::{Device, Capture};
-use packet_swiffer::parser::handle_ethernet_frame;
+use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 
 use clap::Parser;
@@ -60,7 +60,7 @@ fn main() {
 
     // Channel used to pass parsed packets to the report_thread
     // TODO: is string the best structure? Don't think so, maybe a custom one is better
-    let (tx_report, rx_report) = channel::<String>();
+    let (tx_report, rx_report) = channel::<Packet>();
 
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
@@ -78,8 +78,14 @@ fn main() {
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
             // let packet_string = &p[0..10];
-            println!("{}", packet_string);
-            tx_report.send(packet_string).unwrap();
+            match packet_string {
+                Ok(pk) => {
+                    println!("{}", pk);
+                    tx_report.send(pk).unwrap();
+                },
+                Err(err) => println!("Error: {}", err)
+            }
+
         }
     });
 
