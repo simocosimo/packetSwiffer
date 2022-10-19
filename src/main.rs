@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use timer;
 use chrono;
 
-use std::thread;
+use std::{fmt, thread};
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
@@ -9,12 +10,33 @@ use std::sync::mpsc::channel;
 use std::fs::File;
 use std::path::Path;
 use std::io::Write;
+use std::net::IpAddr;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 
 use clap::Parser;
+
+#[derive(PartialEq, Eq, Hash)]
+pub struct ReportHeader {
+    src_addr: IpAddr,
+    dest_addr: IpAddr,
+    src_port: Option<u16>,
+    dest_port: Option<u16>
+}
+
+pub struct Report {
+    packet: Packet,
+    total_bytes: u16
+}
+
+impl fmt::Display for Report {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        //        "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n"
+        write!(f, "| {0: <1}\t| {1: <20}\t| {2: <5}\t| {3: <25} ({4}) \t| {5: <5}\t| {6: <3}\t| {7: <4} \t| {8: <4}\t| {9: <15}\t| {10: <15}", self.packet.interface, self.packet.src_addr, self.packet.src_port.unwrap_or(0), self.packet.dest_addr, self.packet.res_name, self.packet.dest_port.unwrap_or(0), self.total_bytes, self.packet.transport, self.packet.application, chrono::offset::Local::now(), chrono::offset::Local::now())
+    }
+}
 
 fn main() {
 
@@ -97,7 +119,7 @@ fn main() {
         let timer = timer::Timer::new();
         let mut index = 0;
         loop {
-            let mut buffer = Vec::<String>::new();
+            let mut buffer = Vec::<Packet>::new();
             let timer_flag_clone = timer_flag.clone();
             // TODO: maybe add timestamp to report filename? Or folder is better?
             let pathname = format!("{}-{}.txt", report_fm, index);
@@ -108,8 +130,8 @@ fn main() {
             });
             while let Ok(packet) = rx_report.recv() {
                 // TODO: here we should aggregate info about the traffic in a smart way
-                let tmp_string = String::from(format!("{}", packet));
-                buffer.push(tmp_string);
+                // let tmp_string = String::from(format!("{}", packet));
+                buffer.push(packet);
                 let mut flag = timer_flag.lock().unwrap();
                 if *flag {
                     *flag = false;
@@ -125,10 +147,37 @@ fn main() {
                 Ok(file) => file,
             };
 
+            let mut report = HashMap::new();
+
             writeln!(&mut file, "Report #{}\n", index).unwrap();
-            writeln!(&mut file, "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n").unwrap();
+            writeln!(&mut file, "| Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Tot Bytes\t| Transport \t| Application \t| First Timestamp \t| Last Timestamp \n").unwrap();
+
             for s in buffer {
-                writeln!(&mut file, "{}", s).unwrap();
+                let bytes = s.length;
+
+                let p_header = ReportHeader {
+                    src_addr: s.src_addr,
+                    dest_addr: s.dest_addr,
+                    src_port: s.src_port,
+                    dest_port: s.dest_port
+                };
+
+                if report.contains_key(&p_header) {
+                    let update: &mut Report = report.get_mut(&p_header).unwrap();
+                    update.total_bytes += bytes;
+                } else {
+                    report.insert(p_header, {
+                        Report {
+                            packet: s,
+                            total_bytes: bytes
+                        }
+                    });
+                }
+                //writeln!(&mut file, "{}", s).unwrap();
+            }
+
+            for pk in report {
+                writeln!(&mut file, "{}", pk.1).unwrap();
             }
             println!("[{}] Report #{} generated", chrono::offset::Local::now(), index);
             index += 1;

@@ -15,15 +15,15 @@ use crate::utils::tcp_l7;
 
 #[derive(Debug)]
 pub struct Packet {
-    interface: String,
-    src_addr: IpAddr,
-    dest_addr: IpAddr,
-    res_name: String,
-    src_port: Option<u16>,
-    dest_port: Option<u16>,
-    length: u16,
-    transport: String,
-    application: String,
+    pub interface: String,
+    pub src_addr: IpAddr,
+    pub dest_addr: IpAddr,
+    pub res_name: String,
+    pub src_port: Option<u16>,
+    pub dest_port: Option<u16>,
+    pub length: u16,
+    pub transport: String,
+    pub application: String,
 }
 
 impl Packet {
@@ -54,7 +54,7 @@ impl Packet {
 impl fmt::Display for Packet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         //        "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n"
-        write!(f, "| {0: <2}\t| {1: <30}\t| {2: <5}\t| {3: <30} ({4}) \t| {5: <5}\t| {6: <17}\t|  {7: <3}\t| {8: <3} \t| {9}", self.interface, self.src_addr, self.src_port.unwrap_or(0), self.dest_addr, self.res_name, self.dest_port.unwrap_or(0), chrono::offset::Local::now(), self.length, self.transport, self.application)
+        write!(f, "| {0: <2}\t| {1: <30}\t| {2: <25}\t| {3: <25} ({4}) \t| {5: <5}\t| {6: <3}\t| {7: <3} \t| {8: <7}\t| {9}", self.interface, self.src_addr, self.src_port.unwrap_or(0), self.dest_addr, self.res_name, self.dest_port.unwrap_or(0), self.length, self.transport, self.application, chrono::offset::Local::now())
     }
 }
 
