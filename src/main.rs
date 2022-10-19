@@ -10,11 +10,15 @@ use std::fs::File;
 use std::path::Path;
 use std::io::Write;
 use std::io;
+use::packet_swiffer::menu::menu;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
 
 fn main() {
+    let mut filters;
+    filters = menu();
+    println!("{:?}", filters);
     
     let interface_name = match env::args().nth(1) {
         Some(n) => n,
