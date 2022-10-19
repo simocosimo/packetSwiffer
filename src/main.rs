@@ -28,13 +28,15 @@ pub struct ReportHeader {
 
 pub struct Report {
     packet: Packet,
-    total_bytes: u16
+    total_bytes: u64,
+    start_time: String,
+    stop_time: String
 }
 
 impl fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         //        "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n"
-        write!(f, "| {0: <1}\t| {1: <20}\t| {2: <5}\t| {3: <25} ({4}) \t| {5: <5}\t| {6: <3}\t| {7: <4} \t| {8: <4}\t| {9: <15}\t| {10: <15}", self.packet.interface, self.packet.src_addr, self.packet.src_port.unwrap_or(0), self.packet.dest_addr, self.packet.res_name, self.packet.dest_port.unwrap_or(0), self.total_bytes, self.packet.transport, self.packet.application, chrono::offset::Local::now(), chrono::offset::Local::now())
+        write!(f, "| {0: <1}\t| {1: <20}\t| {2: <5}\t| {3: <25} ({4}) \t| {5: <5}\t| {6: <3}\t| {7: <4} \t| {8: <4}\t| {9: <15}\t| {10: <15}", self.packet.interface, self.packet.src_addr, self.packet.src_port.unwrap_or(0), self.packet.dest_addr, self.packet.res_name, self.packet.dest_port.unwrap_or(0), self.total_bytes, self.packet.transport, self.packet.application, self.start_time, self.stop_time )
     }
 }
 
@@ -163,13 +165,20 @@ fn main() {
                 };
 
                 if report.contains_key(&p_header) {
-                    let update: &mut Report = report.get_mut(&p_header).unwrap();
-                    update.total_bytes += bytes;
+                    let mut update: &mut Report = report.get_mut(&p_header).unwrap();
+                    update.total_bytes += bytes as u64;
+                    update.stop_time = s.timestamp;
                 } else {
+
                     report.insert(p_header, {
+                        let time = s.timestamp.clone();
+                        let time2 = s.timestamp.clone();
+
                         Report {
                             packet: s,
-                            total_bytes: bytes
+                            total_bytes: bytes as u64,
+                            start_time: time,
+                            stop_time: time2
                         }
                     });
                 }

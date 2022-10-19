@@ -11,7 +11,7 @@ use pktparse::ipv6::parse_ipv6_header;
 use pktparse::tcp::parse_tcp_header;
 use pktparse::udp::parse_udp_header;
 
-use crate::utils::tcp_l7;
+use crate::utils::{tcp_l7, udp_l7};
 
 #[derive(Debug)]
 pub struct Packet {
@@ -24,6 +24,7 @@ pub struct Packet {
     pub length: u16,
     pub transport: String,
     pub application: String,
+    pub timestamp: String
 }
 
 impl Packet {
@@ -37,6 +38,7 @@ impl Packet {
         length: u16,
         transport: String,
         application: String,
+        timestamp: String,
     ) -> Self {
         Packet {
             interface,
@@ -48,6 +50,7 @@ impl Packet {
             length,
             transport,
             application,
+            timestamp
         }
     }
 }
@@ -69,6 +72,7 @@ fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
             // DONE: use dns_parser and extract the useful info about the packet (hostname, resolved ip, ...)
             match dns_parser::Packet::parse(payload) {
                 Ok(dns_packet) => {
+                    let app_layer = udp_l7(header.dest_port);
                     Ok(Packet::new(
                         interface_name.to_string(),
                         source,
@@ -78,7 +82,8 @@ fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
                         Some(header.dest_port),
                         header.length,
                         "UDP".to_string(),
-                        "unknown".to_string(),
+                        app_layer,
+                        chrono::offset::Local::now().to_string()
                     ))
                 }
                 Err(_) => {
@@ -92,6 +97,7 @@ fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
                         header.length,
                         "UDP".to_string(),
                         "unknown".to_string(),
+                        chrono::offset::Local::now().to_string()
                     ))
                 }
             }
@@ -123,6 +129,7 @@ fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr,
                         64,
                         "ICMP echo reply".to_string(),
                         "unknown".to_string(),
+                        chrono::offset::Local::now().to_string()
                     ))
                 },
                 IcmpCode::EchoRequest => {
@@ -137,6 +144,7 @@ fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr,
                         64,
                         "ICMP echo request".to_string(),
                         "unknown".to_string(),
+                        chrono::offset::Local::now().to_string()
                     ))
 
                 },
@@ -152,6 +160,7 @@ fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr,
                         64,
                         "ICMP packet".to_string(),
                         "unknown".to_string(),
+                        chrono::offset::Local::now().to_string()
                     ))
 
                 }
@@ -201,6 +210,7 @@ fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
                 packet.len() as u16,
                 "TCP".to_string(),
                 app_layer,
+                chrono::offset::Local::now().to_string()
             ))
             
         },
@@ -291,7 +301,8 @@ fn handle_arp_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, &'st
                 None,
                 64,
                 "ARP".to_string(),
-                "unknown".to_string()
+                "unknown".to_string(),
+                chrono::offset::Local::now().to_string()
             ))
         },
         Err(_) => Err("[err]: Couldn't parse arp packet")
