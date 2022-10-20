@@ -67,6 +67,7 @@ pub fn filter_menu() -> () {
     println!("2.\t Filtra per indirizzo IP destinazione");
     println!("3.\t Filtra per porta sorgente");
     println!("4.\t Filtra per porta destinazione");
+    println!("5.\t Filtra per protocollo di trasporto");
     println!("0.\t Back to menu");
 }
 
@@ -119,4 +120,14 @@ pub fn filter_ip_dest() -> String {
     buffer.clear();
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
     return buffer;
+}
+
+pub fn parse_filter(filter: Filter) -> String {
+    // TODO: To discuss
+
+    // Iterate over the struct fields
+    // Create a string, concat with && or || 
+
+    // Dummy return
+    return "".to_string();
 }
