@@ -107,7 +107,7 @@ fn main() {
                     println!("{}", pk);
                     tx_report.send(pk).unwrap();
                 },
-                Err(err) => println!("Error: {}", err)
+                Err(err) => println!("Error: {:?}", err)
             }
 
         }

@@ -27,6 +27,19 @@ pub struct Packet {
     pub timestamp: String
 }
 
+#[derive(Debug)]
+pub enum Error {
+    ParsingError(String),
+    UnknownPacket(String),
+    ARPParsingError(String),
+    IPv6ParsingError(String),
+    IPv4ParsingError(String),
+    ICMPParsingError(String),
+    TCPParsingError(String),
+    UDPParsingError(String),
+    EthernetParsingError(String)
+}
+
 impl Packet {
     pub fn new(
         interface: String,
@@ -61,7 +74,7 @@ impl fmt::Display for Packet {
     }
 }
 
-fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, &'static str> {
+fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, Error> {
     let parsed_udp = parse_udp_header(packet);
 
     match parsed_udp {
@@ -106,11 +119,11 @@ fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
 
 
         },
-        Err(_) => Err("[err]: Couldn't parse ICMP packet")
+        Err(_) => Err(Error::UDPParsingError("[err]: Couldn't parse UDP packet".to_string()))
     }
 }
 
-fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, &'static str> {
+fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, Error> {
     let parsed_icmp = parse_icmp_header(packet);
 
     match parsed_icmp {
@@ -166,31 +179,11 @@ fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr,
                 }
             }
         },
-        Err(_) => Err("[err]: Couldn't parse ICMP packet")
+        Err(_) => Err(Error::ICMPParsingError("[err]: Couldn't parse ICMP packet".to_string()))
     }
 }
 
-// fn handle_icmpv6_packet(interface_name: &str, source: IPHeader<T>, destination: IPHeader<T>, packet: &[u8]) -> String {
-//     let parsed_icmpv6 = parse_icm
-//     let mut ret = String::new();
-//
-//     if let Some(icmpv6_packet) = icmpv6_packet {
-//         write!(
-//             &mut ret,
-//             "[{}]: ICMPv6 packet {} -> {} (type={:?})",
-//             interface_name,
-//             source,
-//             destination,
-//             icmpv6_packet.get_icmpv6_type()
-//         ).unwrap();
-//     } else {
-//         write!(&mut ret, "[{}]: Malformed ICMPv6 Packet", interface_name).unwrap();
-//     }
-//
-//     ret
-// }
-
-fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, &'static str> {
+fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, Error> {
     let parsed_tcp = parse_tcp_header(packet);
 
     match parsed_tcp {
@@ -214,7 +207,7 @@ fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
             ))
             
         },
-        Err(_) => Err("[err]: Couldn't parse TCP packet")
+        Err(_) => Err(Error::TCPParsingError("[err]: Couldn't parse TCP packet".to_string()))
     }
 }
 
@@ -224,7 +217,7 @@ fn handle_transport_protocol(
     destination: IpAddr,
     protocol: IPProtocol,
     packet: &[u8],
-) -> Result<Packet, &'static str> {
+) -> Result<Packet, Error> {
 
     match protocol {
         IPProtocol::UDP => {
@@ -236,17 +229,13 @@ fn handle_transport_protocol(
         IPProtocol::ICMP => {
             handle_icmp_packet(interface_name, source, destination, packet)
         }
-        IPProtocol::ICMP6 => {
-            // TODO: check if this works, otherwise need a way to parse icmpv6
-            handle_icmp_packet(interface_name, source, destination, packet)
-        }
         _ => Err(
-            "Unknown packet"
+            Error::UnknownPacket("Unknown packet".to_string())
         )
     }
 }
 
-fn handle_ipv4_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, &'static str> {
+fn handle_ipv4_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, Error> {
     let parsed_ipv4 = parse_ipv4_header(packet);
 
     match parsed_ipv4 {
@@ -261,11 +250,11 @@ fn handle_ipv4_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, &'s
                 payload,
             )
         },
-        Err(_) => Err("[err]: Couldn't parse IPv4 packet")
+        Err(_) => Err(Error::IPv4ParsingError("[err]: Couldn't parse IPv4 packet".to_string()))
     }
 }
 
-fn handle_ipv6_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, &'static str> {
+fn handle_ipv6_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, Error> {
     let parsed_ipv6 = parse_ipv6_header(packet);
 
     match parsed_ipv6 {
@@ -280,11 +269,11 @@ fn handle_ipv6_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, &'s
                 payload,
             )
         },
-        Err(_) => Err("[err]: Couldn't parse IPv6 packet")
+        Err(_) => Err(Error::IPv6ParsingError("[err]: Couldn't parse IPv6 packet".to_string()))
     }
 }
 
-fn handle_arp_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, &'static str> {
+fn handle_arp_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, Error> {
     let parsed_arp = parse_arp_pkt(packet);
 
     match parsed_arp {
@@ -305,11 +294,11 @@ fn handle_arp_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, &'st
                 chrono::offset::Local::now().to_string()
             ))
         },
-        Err(_) => Err("[err]: Couldn't parse arp packet")
+        Err(_) => Err(Error::ARPParsingError("[err]: Couldn't parse arp packet".to_string()))
     }
 }
 
-pub fn handle_ethernet_frame(interface: &Device, ethernet: &[u8]) -> Result<Packet, &'static str> {
+pub fn handle_ethernet_frame(interface: &Device, ethernet: &[u8]) -> Result<Packet, Error> {
     let interface_name = &interface.name[..];
     let ethernet_frame = parse_ethernet_frame(ethernet);
 
@@ -322,10 +311,10 @@ pub fn handle_ethernet_frame(interface: &Device, ethernet: &[u8]) -> Result<Pack
                 EtherType::IPv6 => handle_ipv6_packet(interface_name, payload),
                 EtherType::ARP => handle_arp_packet(interface_name, payload),
                 _ => Err(
-                    "Unknown packet"
+                    Error::UnknownPacket("Unknown packet".to_string())
                 )
             }
         },
-        Err(_) => Err("[err]: Couldn't parse ethernet packet")
+        Err(_) => Err(Error::EthernetParsingError("[err]: Couldn't parse ethernet packet".to_string()))
     }
 }

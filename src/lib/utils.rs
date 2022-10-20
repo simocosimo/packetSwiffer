@@ -18,9 +18,11 @@ pub fn tcp_l7(port: u16) -> String {
         21 => "ssh".to_string(),
         23 => "telnet".to_string(),
         25 => "smtp".to_string(),
+        53 => "DNS".to_string(),
         110 => "POP3".to_string(),
         143 => "IMAP".to_string(),
         194 => "IRC".to_string(),
+        853 => "DNSOverTLS".to_string(),
         _ => "unknown".to_string()
     };
 
@@ -32,6 +34,7 @@ pub fn udp_l7(port: u16) -> String {
         53 => "DNS".to_string(),
         67..= 68 => "DHCP".to_string(),
         69 => "TFTP".to_string(),
+        123 => "NTP".to_string(),
         161..=162 => "SNMP".to_string(),
         _ => "unknown".to_string()
     };
