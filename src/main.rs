@@ -16,9 +16,8 @@ use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
 
 fn main() {
-    let mut filters;
+    let mut filters = String::new();
     filters = menu();
-    println!("{:?}", filters);
     
     let interface_name = match env::args().nth(1) {
         Some(n) => n,
@@ -49,7 +48,7 @@ fn main() {
         .promisc(promisc_mode)
         // .timeout(10)    // this is needed to read packets in real time
         .immediate_mode(true)
-        .open().unwrap();
+        .open().unwrap().filter(&filters, true).unwrap();
 
     // Channel used to pass packets between sniffing thread and parsing thread
     let (tx_thread, rx_thread) = channel::<Vec<u8>>();

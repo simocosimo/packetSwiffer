@@ -1,11 +1,11 @@
 use std::io;
 #[derive(Debug)]
 pub struct Filter{
-    ip_source: String,
-    ip_dest: String,
-    port_source: String,
-    port_dest: String,
-    transport_protocol: String,
+    pub ip_source: String,
+    pub ip_dest: String,
+    pub port_source: String,
+    pub port_dest: String,
+    pub transport_protocol: String,
 }
 impl Filter {
     pub fn new() -> Self {
@@ -15,22 +15,14 @@ impl Filter {
                       port_dest: "".to_string(),
                       transport_protocol: "".to_string()};
     }
-    /*
-    pub fn set_ip_source(self, ip_source: String) -> Self {
-        return Filter{ip_source: ip_source, ip_dest: self.ip_dest};
-    }
 
-    
-    pub fn set_ip_dest(self, ip_dest: String) -> Self {
-        return Filter{ip_source: self.ip_source, ip_dest: ip_dest};
+    pub fn as_array(&self) -> [String; 5] {
+        return [self.ip_source.clone(), self.ip_dest.clone(), self.port_source.clone(), self.port_dest.clone(), self.transport_protocol.clone()];
     }
-    */
-    
-
 }
 
 pub fn print_index() -> () {
-    print!("{}[2J", 27 as char);
+    //print!("{}[2J", 27 as char);
     println!("Packet Swiffer v.1.0");
     println!("Author: Barletta Francesco Pio, Cosimo Simone, Ferla Damiano");
     println!("Politecnico di Torino - All Rights Deserved");
@@ -45,7 +37,7 @@ pub fn print_index() -> () {
 /*
 Da sistemare la struct da popolare
 */
-pub fn menu() -> Filter {
+pub fn menu() -> String {
     let mut filters = Filter::new();
     loop {
         print_index();
@@ -64,11 +56,11 @@ pub fn menu() -> Filter {
             }
         }
     }
-    return filters;    
+    return parse_filter(filters);    
 }
 
 pub fn filter_menu() -> () {
-    print!("{}[2J", 27 as char);
+    //print!("{}[2J", 27 as char);
     println!("Filter settings:");
     println!("\n");
     println!("1.\t Filtra per indirizzo IP sorgente");
@@ -106,6 +98,7 @@ pub fn print_filter() -> Filter{
             "1" => {
                 vec_ip_source.push(filter_ip_source());
                 buffer.clear();
+                println!("{:?}", vec_ip_source);
             }
             "2" => {
                 vec_ip_dest.push(filter_ip_dest());
@@ -126,24 +119,28 @@ pub fn print_filter() -> Filter{
             "0" => {
                 if !vec_ip_source.is_empty() {
                     let mut last = vec_ip_source.last().unwrap().to_string();
+                    println!("last: {}", last);
                     for x in vec_ip_source{
+                        println!("x: {}", x);
+                        println!("x=last? {}", x == last);
                         if x == last {
-                            ip_source = "src host".to_string() + &ip_source.trim().to_string() + &x;
+                            ip_source = ip_source + &x;
                         }
                         else {
-                            ip_source = "src host".to_string() + &ip_source.trim().to_string() + &x + &"or".to_string();
+                            ip_source = ip_source.trim().to_string() + &x + &" or ".to_string();
                         }
                     }
+                    println!("{}", ip_source);
                 }
                 
                 if !vec_ip_dest.is_empty() {
                     let mut last = vec_ip_dest.last().unwrap().to_string();
                     for x in vec_ip_dest{
                         if x == last {
-                            ip_dest = "dst host".to_string() + &ip_dest.trim().to_string() + &x;
+                            ip_dest = ip_dest + &x;
                         }
                         else {
-                            ip_dest = "dst host".to_string() + &ip_dest.trim().to_string() + &x + &"or".to_string();
+                            ip_dest = ip_dest.trim().to_string() + &x + &" or ".to_string();
                         }
                     }
                 }
@@ -152,10 +149,10 @@ pub fn print_filter() -> Filter{
                     let mut last = vec_port_source.last().unwrap().to_string();
                     for x in vec_port_source{
                         if x == last {
-                            port_source = "src port".to_string() + &port_source.trim().to_string() + &x;
+                            port_source = port_source + &x;
                         }
                         else {
-                            port_source = "src port".to_string() + &port_source.trim().to_string() + &x + &"or".to_string();
+                            port_source = port_source.trim().to_string() + &x + &" or ".to_string();
                         }
                     }
                 }
@@ -164,10 +161,10 @@ pub fn print_filter() -> Filter{
                     let mut last = vec_port_dest.last().unwrap().to_string();
                     for x in vec_port_dest{
                         if x == last {
-                            port_dest = "dst port".to_string() + &port_dest.trim().to_string() + &x;
+                            port_dest = port_dest + &x;
                         }
                         else {
-                            port_dest = "dst port".to_string() + &port_dest.trim().to_string() + &x + &"or".to_string();
+                            port_dest = port_dest.trim().to_string() + &x + &" or ".to_string();
                         }
                     }
                 }
@@ -176,20 +173,20 @@ pub fn print_filter() -> Filter{
                     let mut last = vec_transport_protocol.last().unwrap().to_string();
                     for x in vec_transport_protocol{
                         if x == last {
-                            transport_protocol = "ip proto".to_string() + &transport_protocol.trim().to_string() + &x;
+                            transport_protocol = transport_protocol + &x;
                         }
                         else {
-                            transport_protocol = "ip proto".to_string() + &transport_protocol.trim().to_string() + &x + &"or".to_string();
+                            transport_protocol = transport_protocol.trim().to_string() + &x + &" or ".to_string();
                         }
                     }
                 }
 
                 filter = Filter{
-                    ip_source: ("src host ".to_string() + &ip_source).trim().to_string(),
-                    ip_dest: ("dst host ".to_string() + &ip_dest).trim().to_string(),
-                    port_source: ("src port ".to_string() + &port_source).trim().to_string(),
-                    port_dest: ("dst port ".to_string() + &port_dest).trim().to_string(),
-                    transport_protocol: ("ip proto ".to_string() + &transport_protocol).trim().to_string()
+                    ip_source: ip_source,
+                    ip_dest: ip_dest,
+                    port_source: port_source,
+                    port_dest: port_dest,
+                    transport_protocol: transport_protocol,
                 };
                 break;
             }
@@ -200,13 +197,13 @@ pub fn print_filter() -> Filter{
 }
 
 pub fn filter_ip_source() -> String {
-    print!("{}[2J", 27 as char);
+    //print!("{}[2J", 27 as char);
     println!("Filtra per indirizzo IP sorgente: \n");
     println!("Inserisci indirizzo IP sorgente");
     let mut buffer = String::new();
     buffer.clear();
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
-    return buffer;
+    return "src host ".to_owned() + &buffer.trim().to_string();
 }
 
 pub fn filter_ip_dest() -> String {
@@ -216,45 +213,50 @@ pub fn filter_ip_dest() -> String {
     let mut buffer = String::new();
     buffer.clear();
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
-    return buffer;
+    return "dst host ".to_owned() + &buffer.trim().to_string();
 }
 
 pub fn filter_port_source() -> String {
-    print!("{}[2J", 27 as char);
+    //print!("{}[2J", 27 as char);
     println!("Filtra per porta sorgente: \n");
     println!("Inserisci porta sorgente");
     let mut buffer = String::new();
     buffer.clear();
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
-    return buffer;
+    return "src port ".to_owned() + &buffer.trim().to_string();
 }
 
 pub fn filter_port_dest() -> String {
-    print!("{}[2J", 27 as char);
+    //print!("{}[2J", 27 as char);
     println!("Filtra per porta destinazione: \n");
     println!("Inserisci porta destinazione");
     let mut buffer = String::new();
     buffer.clear();
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
-    return buffer;
+    return "dst port ".to_owned() + &buffer.trim().to_string();
 }
 
 pub fn filter_transport_protocol() -> String {
-    print!("{}[2J", 27 as char);
+    //print!("{}[2J", 27 as char);
     println!("Filtra per protocollo di trasporto: \n");
     println!("Inserisci protocollo di trasporto");
     let mut buffer = String::new();
     buffer.clear();
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
-    return buffer;
+    return "ip proto ".to_owned() + &buffer.trim().to_string();
 }
 
 pub fn parse_filter(filter: Filter) -> String {
-    // TODO: To discuss
-
-    // Iterate over the struct fields
-    // Create a string, concat with && or || 
-
-    // Dummy return
-    return "".to_string();
+    let filter_array = filter.as_array();
+    let last = filter_array.last().unwrap().to_string();
+    let mut filter_string = String::new();
+    for f in filter_array {
+        if f == last {
+            filter_string = filter_string + &f;
+        }
+        else {
+            filter_string = filter_string + &f + &" or ";
+        }
+    }
+    return filter_string;
 }
