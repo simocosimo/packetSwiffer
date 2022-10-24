@@ -124,14 +124,28 @@ fn main() {
 
     // TODO: create thread that analyze packets and produce report (synch should be done with mutex on structure)
     let report_thread = thread::spawn(move | | {
-        let timer = timer::Timer::new();
+        //let timer = timer::Timer::new();
         let mut index = 0;
-        let (lock, cvar) = &*pair3;
         loop {
+            let (lock, cvar) = &*pair3;
             let mut buffer = Vec::<String>::new();
             let timer_flag_clone = timer_flag.clone();
             let pathname = format!("report-{}.txt", index);
             let path = Path::new(&pathname);
+            let timer_thread = thread::spawn(move || {
+                let mut time = 10;
+                while time > 0 {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    let mut pause_flag = lock.lock().unwrap();
+                    if *pause_flag == false {
+                        let mut flag = timer_flag_clone.lock().unwrap();
+                        *flag = true;
+                        time = time - 1;
+                    }
+                    drop(pause_flag);
+                }
+            });
+            /*
             let _guard_timer = timer.schedule_with_delay(chrono::Duration::seconds(10), move || {
                 // Prendi pause lock
                 // Controlla se pause == true
@@ -139,6 +153,7 @@ fn main() {
                 let mut flag = timer_flag_clone.lock().unwrap();
                 *flag = true;
             });
+            */
 
             while let Ok(packet) = rx_report.recv() {
                 // TODO: here we should aggregate info about the traffic in a smart way
@@ -165,6 +180,7 @@ fn main() {
             }
             println!("[{}] Report #{} generated", chrono::offset::Local::now(), index);
             index += 1;
+            timer_thread.join().unwrap();
         }
     });
 
