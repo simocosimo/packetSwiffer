@@ -20,7 +20,6 @@ use packet_swiffer::parser::handle_ethernet_frame;
 fn main() {
     let mut settings = Settings::new();
     settings = menu();
-    println!("{:?}", settings);
     
     let interface_name = match env::args().nth(1) {
         Some(n) => n,
@@ -68,6 +67,9 @@ fn main() {
     let sniffing_thread = thread::spawn(move | | {
         let (lock, cvar) = &*pair;
         println!("Premi il tasto P per mettere in pausa lo sniffing");
+        if settings.filters != ""{
+            cap.filter(&settings.filters, false);
+        }
         while let Ok(packet) = cap.next_packet() {
             let mut pause = lock.lock().unwrap();
             let owned_packet = packet.to_owned();
@@ -109,11 +111,8 @@ fn main() {
     // Thread needed to perform parsing of received packet
     let parsing_thread = thread::spawn(move | | {
         // TODO: add macos/ios support
-        // TODO: handle filters
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
-            // let packet_string = &p[0..10];
-            println!("{}", packet_string);
             tx_report.send(packet_string).unwrap();
         }
     });
