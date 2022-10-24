@@ -113,6 +113,7 @@ fn main() {
         // TODO: add macos/ios support
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
+            println!("{}", packet_string);
             tx_report.send(packet_string).unwrap();
         }
     });
