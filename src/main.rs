@@ -10,14 +10,17 @@ use std::fs::File;
 use std::path::Path;
 use std::io::Write;
 use std::io;
+use::packet_swiffer::menu::Settings;
 use::packet_swiffer::menu::menu;
+
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
 
 fn main() {
-    let mut filters = String::new();
-    filters = menu();
+    let mut settings = Settings::new();
+    settings = menu();
+    println!("{:?}", settings);
     
     let interface_name = match env::args().nth(1) {
         Some(n) => n,
@@ -48,7 +51,7 @@ fn main() {
         .promisc(promisc_mode)
         // .timeout(10)    // this is needed to read packets in real time
         .immediate_mode(true)
-        .open().unwrap().filter(&filters, true).unwrap();
+        .open().unwrap();
 
     // Channel used to pass packets between sniffing thread and parsing thread
     let (tx_thread, rx_thread) = channel::<Vec<u8>>();
