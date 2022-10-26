@@ -198,6 +198,9 @@ pub fn filter_transport_protocol() -> String {
     let mut buffer = String::new();
     buffer.clear();
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
+    if buffer == "tcp\n" || buffer == "udp\n" || buffer == "icmp\n" {
+        buffer = "\\".to_owned() + &buffer;
+    }
     return "ip proto ".to_owned() + &buffer.trim().to_string();}
 
 

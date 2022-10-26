@@ -68,7 +68,7 @@ fn main() {
         let (lock, cvar) = &*pair;
         println!("Premi il tasto P per mettere in pausa lo sniffing");
         if settings.filters != ""{
-            cap.filter(&settings.filters, false);
+            cap.filter(&settings.filters, false).unwrap();
         }
         while let Ok(packet) = cap.next_packet() {
             let mut pause = lock.lock().unwrap();
