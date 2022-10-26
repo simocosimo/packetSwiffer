@@ -17,6 +17,8 @@ use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 
 use clap::Parser;
+use csv::WriterBuilder;
+use serde::Serialize;
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct ReportHeader {
@@ -26,6 +28,7 @@ pub struct ReportHeader {
     dest_port: Option<u16>
 }
 
+#[derive(Serialize)]
 pub struct Report {
     packet: Packet,
     total_bytes: u64,
@@ -125,6 +128,13 @@ fn main() {
             let timer_flag_clone = timer_flag.clone();
             // TODO: maybe add timestamp to report filename? Or folder is better?
             let pathname = format!("{}-{}.txt", report_fm, index);
+            let csv_pathname = format!("{}-{}.csv", report_fm, index);
+            let mut csv_wrt = WriterBuilder::new().has_headers(false).from_path(csv_pathname).unwrap();
+            csv_wrt.write_record(
+                &["interface", "src_addr", "dest_addr",
+                    "res_name", "src_port", "dest_port", "transport", "application",
+                    "tot_bytes", "start_time", "stop_time"]
+            ).unwrap();
             let path = Path::new(&pathname);
             let _guard = timer.schedule_with_delay(chrono::Duration::seconds(report_delay), move | | {
                 let mut flag = timer_flag_clone.lock().unwrap();
@@ -187,8 +197,10 @@ fn main() {
 
             for pk in report {
                 writeln!(&mut file, "{}", pk.1).unwrap();
+                csv_wrt.serialize(pk.1).unwrap();
             }
             println!("[{}] Report #{} generated", chrono::offset::Local::now(), index);
+            csv_wrt.flush().unwrap();
             index += 1;
         }
     });

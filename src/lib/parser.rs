@@ -13,7 +13,9 @@ use pktparse::udp::parse_udp_header;
 
 use crate::utils::{tcp_l7, udp_l7};
 
-#[derive(Debug)]
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
 pub struct Packet {
     pub interface: String,
     pub src_addr: IpAddr,
@@ -21,9 +23,11 @@ pub struct Packet {
     pub res_name: String,
     pub src_port: Option<u16>,
     pub dest_port: Option<u16>,
+    #[serde(skip_serializing)]
     pub length: u16,
     pub transport: String,
     pub application: String,
+    #[serde(skip_serializing)]
     pub timestamp: String
 }
 
