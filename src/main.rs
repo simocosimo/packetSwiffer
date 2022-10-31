@@ -67,7 +67,7 @@ fn main() {
     let sniffing_thread = thread::spawn(move | | {
         let (lock, cvar) = &*pair;
         println!("Premi il tasto P per mettere in pausa lo sniffing");
-        if settings.filters != ""{
+        if settings.filters != "" {
             cap.filter(&settings.filters, false).unwrap();
         }
         while let Ok(packet) = cap.next_packet() {

@@ -156,50 +156,90 @@ pub fn print_filter() -> Filter{
 }
 
 pub fn filter_ip_source() -> String {
-    //print!("{}[2J", 27 as char);
-    println!("Filtra per indirizzo IP sorgente: \n");
-    println!("Inserisci indirizzo IP sorgente");
     let mut buffer = String::new();
-    buffer.clear();
-    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+    loop {
+        //print!("{}[2J", 27 as char);
+        println!("Filtra per indirizzo IP sorgente: \n");
+        println!("Inserisci indirizzo IP sorgente");
+        buffer.clear();
+        io::stdin().read_line(&mut buffer).expect("Failed to read line");
+        if !check_ip_address(&buffer) {
+            println!("Errore nell'indirizzo IP");
+        }
+        else {
+            break;
+        }
+    }
     return "src host ".to_owned() + &buffer.trim().to_string();}
 
 pub fn filter_ip_dest() -> String {
-    print!("{}[2J", 27 as char);
-    println!("Filtra per indirizzo IP destinazione: \n");
-    println!("Inserisci indirizzo IP destinazione");
     let mut buffer = String::new();
-    buffer.clear();
-    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+    loop {
+        //print!("{}[2J", 27 as char);
+        println!("Filtra per indirizzo IP destinazione: \n");
+        println!("Inserisci indirizzo IP destinazione");
+        buffer.clear();
+        io::stdin().read_line(&mut buffer).expect("Failed to read line");
+        if !check_ip_address(&buffer) {
+            println!("Errore nell'indirizzo IP");
+        }
+        else {
+            break;
+        }
+    }
     return "dst host ".to_owned() + &buffer.trim().to_string();}
 
 pub fn filter_port_source() -> String {
-    print!("{}[2J", 27 as char);
-    println!("Filtra per porta sorgente: \n");
-    println!("Inserisci porta sorgente");
     let mut buffer = String::new();
-    buffer.clear();
-    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+    loop {
+        //print!("{}[2J", 27 as char);
+        println!("Filtra per porta sorgente: \n");
+        println!("Inserisci porta sorgente");
+        buffer.clear();
+        io::stdin().read_line(&mut buffer).expect("Failed to read line");
+        if !check_port_number(&buffer) {
+            println!("Errore nella porta");
+        }
+        else {
+            break;
+        }
+    }
     return "src port ".to_owned() + &buffer.trim().to_string();}
 
 pub fn filter_port_dest() -> String {
-    print!("{}[2J", 27 as char);
-    println!("Filtra per porta destinazione: \n");
-    println!("Inserisci porta destinazione");
     let mut buffer = String::new();
-    buffer.clear();
-    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+    loop {
+        print!("{}[2J", 27 as char);
+        println!("Filtra per porta destinazione: \n");
+        println!("Inserisci porta destinazione");
+        buffer.clear();
+        io::stdin().read_line(&mut buffer).expect("Failed to read line");
+        if !check_port_number(&buffer) {
+            println!("Errore nella porta");
+        }
+        else {
+            break;
+        }
+    }
     return "dst port ".to_owned() + &buffer.trim().to_string();}
 
 pub fn filter_transport_protocol() -> String {
-    print!("{}[2J", 27 as char);
-    println!("Filtra per protocollo di trasporto: \n");
-    println!("Inserisci protocollo di trasporto");
     let mut buffer = String::new();
-    buffer.clear();
-    io::stdin().read_line(&mut buffer).expect("Failed to read line");
-    if buffer == "tcp\n" || buffer == "udp\n" || buffer == "icmp\n" {
-        buffer = "\\".to_owned() + &buffer;
+    loop {
+        //print!("{}[2J", 27 as char);
+        println!("Filtra per protocollo di trasporto: \n");
+        println!("Inserisci protocollo di trasporto");
+        buffer.clear();
+        io::stdin().read_line(&mut buffer).expect("Failed to read line");
+        if !check_transport_protocol(&buffer) {
+            println!("Errore nel tipo di protocollo digitato.");
+        }
+        else {
+            if buffer == "tcp\n" || buffer == "udp\n" || buffer == "icmp\n" {
+                buffer = "\\".to_owned() + &buffer;
+            }
+            break;
+        }
     }
     return "ip proto ".to_owned() + &buffer.trim().to_string();}
 
@@ -208,4 +248,35 @@ pub fn parse_filter(filter: Filter) -> String {
     let filter_array: Vec<String> = filter.as_array().into_iter().filter(|x| x != "").collect();
     let filter_string = filter_array.join(" or ");
     return filter_string;
+}
+pub fn check_transport_protocol(string: &String) -> bool {
+    let possible = vec![String::from("icmp\n"), String::from("icmp6\n"), String::from("igmp\n"),
+                        String::from("igrp\n"), String::from("pim\n"), String::from("ah\n"),
+                        String::from("esp\n"), String::from("vrrp\n"), String::from("udp\n"), String::from("tcp\n")];
+    return possible.contains(string);
+}
+pub fn check_ip_address(string: &String) -> bool {
+    let mut space = true;
+    let splitted: Vec<&str> = string.trim().split(".").collect();
+    for elem in &splitted {
+        let mut number = elem.parse::<i32>();
+        if number.is_ok() {
+            if number.as_ref().unwrap() > &255 || number.unwrap() < 0 {
+                space = false;
+            }
+        }
+        else {
+            space = false;
+        }
+    }
+    return splitted.len() == 4 && space;
+}
+pub fn check_port_number(string: &String) -> bool {
+    let number = string.trim().parse::<i32>();
+    if number.is_ok() {
+        if number.as_ref().unwrap() > &0 && number.unwrap() < 65535 {
+            return true;
+        }
+    } 
+    return false;
 }
