@@ -1,7 +1,7 @@
 use timer;
 use chrono;
 
-use std::{env, thread};
+use std::thread;
 use std::process;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::channel;
@@ -16,25 +16,38 @@ use::packet_swiffer::menu::menu;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::handle_ethernet_frame;
+use packet_swiffer::args::Args;
+
+
+use clap::Parser;
 
 fn main() {
+
+    let args = Args::parse();
+    let interface_name = args.interface;
+    let promisc_mode = args.promisc;
+    let report_delay = args.timeout;
+    let report_fm = args.filename;
+    let list_mode = args.list;
+    
+    // Print menu
     let mut settings = Settings::new();
     settings = menu();
     
-    let interface_name = match env::args().nth(1) {
-        Some(n) => n,
-        None => {
-            eprintln!("USAGE: swiffer <NETWORK INTERFACE>");
-            process::exit(1);
-        }
-    };
-    
-
-    let promisc_mode = env::args().nth(2) == Some("--promisc".to_string());
-    println!("Promisc mode: {}", promisc_mode);
-
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
+
+    // Handle list mode
+    if list_mode {
+        println!("The following interfaces are available");
+        println!("{0: <20} | {1: <20}", "Name", "Description");
+        println!("---------------------------------------------------------------------");
+        interfaces.into_iter()
+            .for_each(|i| println!("{0: <20} | {1: <20}", i.name, i.desc.unwrap_or("None".to_string())));
+        process::exit(0);
+    }
+
+    println!("Promisc mode: {}", promisc_mode);
     let interface = interfaces
         .into_iter()
         .filter(|i| i.name == interface_name)
@@ -48,7 +61,6 @@ fn main() {
     // Setting up pcap capture
     let mut cap = Capture::from_device(interface).unwrap()
         .promisc(promisc_mode)
-        // .timeout(10)    // this is needed to read packets in real time
         .immediate_mode(true)
         .open().unwrap();
 
@@ -143,6 +155,7 @@ fn main() {
             let mut buffer = Vec::<String>::new();
             let pathname = format!("report-{}.txt", index);
             let path = Path::new(&pathname);
+
             while let Ok(packet) = rx_report.recv() {
                 // TODO: here we should aggregate info about the traffic in a smart way
                 let tmp_string = String::from(format!("REPORT: {}", packet));

@@ -2,6 +2,9 @@
 name = "swiffer"
 version = "0.1.0"
 edition = "2021"
+authors = ["Simone Cosimo <simosx4@gmail.com>"]
+description = "A simple multithreaded network traffic analyzer built in Rust"
+readme = "README.md"
 
 [lib]
 name = "packet_swiffer"
@@ -11,6 +14,6 @@ path = "src/lib/lib.rs"
 dns-parser = "0.8.0"
 timer = "0.2.0"
 chrono = "0.4.22"
-
 pcap = "0.11.0"
 pktparse = "0.7.1"
+clap = { version = "4.0.15", features = ["derive"] }
