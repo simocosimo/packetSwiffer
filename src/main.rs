@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use timer;
 use chrono;
 
-use std::thread;
+use std::{fmt, thread};
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
@@ -9,12 +10,38 @@ use std::sync::mpsc::channel;
 use std::fs::File;
 use std::path::Path;
 use std::io::Write;
+use std::net::IpAddr;
 
 use pcap::{Device, Capture};
-use packet_swiffer::parser::handle_ethernet_frame;
+use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 
 use clap::Parser;
+use csv::WriterBuilder;
+use serde::Serialize;
+
+#[derive(PartialEq, Eq, Hash)]
+pub struct ReportHeader {
+    src_addr: IpAddr,
+    dest_addr: IpAddr,
+    src_port: Option<u16>,
+    dest_port: Option<u16>
+}
+
+#[derive(Serialize)]
+pub struct Report {
+    packet: Packet,
+    total_bytes: u64,
+    start_time: String,
+    stop_time: String
+}
+
+impl fmt::Display for Report {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        //        "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n"
+        write!(f, "| {0: <1}\t| {1: <20}\t| {2: <5}\t| {3: <25} ({4}) \t| {5: <5}\t| {6: <3}\t| {7: <4} \t| {8: <4}\t| {9: <15}\t| {10: <15}", self.packet.interface, self.packet.src_addr, self.packet.src_port.unwrap_or(0), self.packet.dest_addr, self.packet.res_name, self.packet.dest_port.unwrap_or(0), self.total_bytes, self.packet.transport, self.packet.application, self.start_time, self.stop_time )
+    }
+}
 
 fn main() {
 
@@ -60,7 +87,7 @@ fn main() {
 
     // Channel used to pass parsed packets to the report_thread
     // TODO: is string the best structure? Don't think so, maybe a custom one is better
-    let (tx_report, rx_report) = channel::<String>();
+    let (tx_report, rx_report) = channel::<Packet>();
 
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
@@ -78,8 +105,14 @@ fn main() {
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
             // let packet_string = &p[0..10];
-            println!("{}", packet_string);
-            tx_report.send(packet_string).unwrap();
+            match packet_string {
+                Ok(pk) => {
+                    println!("{}", pk);
+                    tx_report.send(pk).unwrap();
+                },
+                Err(err) => println!("Error: {}", err)
+            }
+
         }
     });
 
@@ -91,10 +124,17 @@ fn main() {
         let timer = timer::Timer::new();
         let mut index = 0;
         loop {
-            let mut buffer = Vec::<String>::new();
+            let mut buffer = Vec::<Packet>::new();
             let timer_flag_clone = timer_flag.clone();
             // TODO: maybe add timestamp to report filename? Or folder is better?
             let pathname = format!("{}-{}.txt", report_fm, index);
+            let csv_pathname = format!("{}-{}.csv", report_fm, index);
+            let mut csv_wrt = WriterBuilder::new().has_headers(false).from_path(csv_pathname).unwrap();
+            csv_wrt.write_record(
+                &["interface", "src_addr", "dest_addr",
+                    "res_name", "src_port", "dest_port", "transport", "application",
+                    "tot_bytes", "start_time", "stop_time"]
+            ).unwrap();
             let path = Path::new(&pathname);
             let _guard = timer.schedule_with_delay(chrono::Duration::seconds(report_delay), move | | {
                 let mut flag = timer_flag_clone.lock().unwrap();
@@ -102,8 +142,8 @@ fn main() {
             });
             while let Ok(packet) = rx_report.recv() {
                 // TODO: here we should aggregate info about the traffic in a smart way
-                let tmp_string = String::from(format!("REPORT: {}", packet));
-                buffer.push(tmp_string);
+                // let tmp_string = String::from(format!("{}", packet));
+                buffer.push(packet);
                 let mut flag = timer_flag.lock().unwrap();
                 if *flag {
                     *flag = false;
@@ -119,11 +159,48 @@ fn main() {
                 Ok(file) => file,
             };
 
-            writeln!(&mut file, "Report #{}", index).unwrap();
+            let mut report = HashMap::new();
+
+            writeln!(&mut file, "Report #{}\n", index).unwrap();
+            writeln!(&mut file, "| Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Tot Bytes\t| Transport \t| Application \t| First Timestamp \t| Last Timestamp \n").unwrap();
+
             for s in buffer {
-                writeln!(&mut file, "{}", s).unwrap();
+                let bytes = s.length;
+
+                let p_header = ReportHeader {
+                    src_addr: s.src_addr,
+                    dest_addr: s.dest_addr,
+                    src_port: s.src_port,
+                    dest_port: s.dest_port
+                };
+
+                if report.contains_key(&p_header) {
+                    let mut update: &mut Report = report.get_mut(&p_header).unwrap();
+                    update.total_bytes += bytes as u64;
+                    update.stop_time = s.timestamp;
+                } else {
+
+                    report.insert(p_header, {
+                        let time = s.timestamp.clone();
+                        let time2 = s.timestamp.clone();
+
+                        Report {
+                            packet: s,
+                            total_bytes: bytes as u64,
+                            start_time: time,
+                            stop_time: time2
+                        }
+                    });
+                }
+                //writeln!(&mut file, "{}", s).unwrap();
+            }
+
+            for pk in report {
+                writeln!(&mut file, "{}", pk.1).unwrap();
+                csv_wrt.serialize(pk.1).unwrap();
             }
             println!("[{}] Report #{} generated", chrono::offset::Local::now(), index);
+            csv_wrt.flush().unwrap();
             index += 1;
         }
     });
