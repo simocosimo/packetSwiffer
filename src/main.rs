@@ -4,17 +4,22 @@ use chrono;
 
 use std::{fmt, thread};
 use std::process;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::channel;
 
 use std::fs::File;
 use std::path::Path;
 use std::io::Write;
+use std::io;
+use::packet_swiffer::menu::Settings;
+use::packet_swiffer::menu::menu;
+
 use std::net::IpAddr;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
+
 
 use clap::Parser;
 use csv::WriterBuilder;
@@ -51,7 +56,11 @@ fn main() {
     let report_delay = args.timeout;
     let report_fm = args.filename;
     let list_mode = args.list;
-
+    
+    // Print menu
+    let mut settings = Settings::new();
+    settings = menu();
+    
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
 
@@ -89,19 +98,58 @@ fn main() {
     // TODO: is string the best structure? Don't think so, maybe a custom one is better
     let (tx_report, rx_report) = channel::<Packet>();
 
+    let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    let pair2 = Arc::clone(&pair);
+    let pair3 = Arc::clone(&pair);
+
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
-        // TODO: add a mechanism to stop/resume packet sniffing
+        let (lock, cvar) = &*pair;
+        println!("Premi il tasto P per mettere in pausa lo sniffing");
+        if settings.filters != "" {
+            cap.filter(&settings.filters, false).unwrap();
+        }
         while let Ok(packet) = cap.next_packet() {
+            let mut pause = lock.lock().unwrap();
             let owned_packet = packet.to_owned();
-            tx_thread.send(owned_packet.to_vec()).unwrap();
+            if !*pause {
+                tx_thread.send(owned_packet.to_vec()).unwrap();
+            }
+            drop(lock);
+        }
+    });
+
+    // Thread used to pause/resume
+    let pause_thread = thread::spawn(move || {
+        let (lock, cvar) = &*pair2;
+        let mut buffer = String::new();
+        loop {
+            buffer.clear();
+            io::stdin().read_line(&mut buffer).expect("Failed to read line");
+            match buffer.as_str().trim() {
+                "P" => {
+                    let mut pause = lock.lock().unwrap();
+                    println!("Controllo a pause_thread");
+                    if *pause == true {
+                        *pause = false;
+                        println!("Sniffing ripreso!");
+                    }
+                    else {
+                        *pause = true;
+                        println!("Sniffing stoppato!");
+                    }
+                    io::stdout().flush().unwrap();
+                    drop(pause);
+                }
+                _ => {}
+            }
+            
         }
     });
 
     // Thread needed to perform parsing of received packet
     let parsing_thread = thread::spawn(move | | {
         // TODO: add macos/ios support
-        // TODO: handle filters
         while let Ok(p) = rx_thread.recv() {
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
             // let packet_string = &p[0..10];
@@ -119,10 +167,24 @@ fn main() {
     // TODO: temporary shared data to test report generation
     let timer_flag = Arc::new(Mutex::new(false));
 
+
     // TODO: create thread that analyze packets and produce report (synch should be done with mutex on structure)
     let report_thread = thread::spawn(move | | {
         let timer = timer::Timer::new();
+        let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
+        let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(10), move || {
+            // Prendi pause lock
+            // Controlla se pause == true
+            // Se si, drop(guard_timer)
+            let (lock, cvar) = &*pair3;
+            let mut pause_flag = lock.lock().unwrap();
+            if *pause_flag == false{
+                let mut flag = timer_flag_clone.lock().unwrap();
+                *flag = true;
+            }
+            drop(pause_flag);
+        });
         loop {
             let mut buffer = Vec::<Packet>::new();
             let timer_flag_clone = timer_flag.clone();
@@ -136,16 +198,13 @@ fn main() {
                     "tot_bytes", "start_time", "stop_time"]
             ).unwrap();
             let path = Path::new(&pathname);
-            let _guard = timer.schedule_with_delay(chrono::Duration::seconds(report_delay), move | | {
-                let mut flag = timer_flag_clone.lock().unwrap();
-                *flag = true;
-            });
+
             while let Ok(packet) = rx_report.recv() {
                 // TODO: here we should aggregate info about the traffic in a smart way
                 // let tmp_string = String::from(format!("{}", packet));
                 buffer.push(packet);
                 let mut flag = timer_flag.lock().unwrap();
-                if *flag {
+                if *flag{
                     *flag = false;
                     drop(flag);
                     break;
@@ -206,6 +265,7 @@ fn main() {
     });
 
     // joining the threads as a last thing to do
+    pause_thread.join().unwrap();
     sniffing_thread.join().unwrap();
     parsing_thread.join().unwrap();
     report_thread.join().unwrap();
