@@ -173,7 +173,7 @@ fn main() {
         let timer = timer::Timer::new();
         let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
-        let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(10), move || {
+        let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
             // Prendi pause lock
             // Controlla se pause == true
             // Se si, drop(guard_timer)
@@ -189,8 +189,8 @@ fn main() {
             let mut buffer = Vec::<Packet>::new();
             let timer_flag_clone = timer_flag.clone();
             // TODO: maybe add timestamp to report filename? Or folder is better?
-            let pathname = format!("{}-{}.txt", report_fm, index);
-            let csv_pathname = format!("{}-{}.csv", report_fm, index);
+            let pathname = format!("{}-{}.txt", settings.filename, index);
+            let csv_pathname = format!("{}-{}.csv", settings.filename, index);
             let mut csv_wrt = WriterBuilder::new().has_headers(false).from_path(csv_pathname).unwrap();
             csv_wrt.write_record(
                 &["interface", "src_addr", "dest_addr",

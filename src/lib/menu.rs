@@ -1,4 +1,8 @@
 use std::io;
+use crate::args::Args;
+use clap::Parser;
+use pcap::Device;
+
 #[derive(Debug)]
 pub struct Filter{
     pub ip_source: String,
@@ -15,8 +19,6 @@ impl Filter {
                       port_dest: String::new(),
                       transport_protocol: String::new()};
     }
-
-    
     pub fn as_array(&self) -> [String; 5] {
         return [self.ip_source.clone(), self.ip_dest.clone(), self.port_source.clone(), self.port_dest.clone(), self.transport_protocol.clone()];
     }
@@ -26,6 +28,8 @@ impl Filter {
 pub struct Settings {
     pub filters: String,
     pub csv: bool, 
+    pub timeout: u32,
+    pub filename: String,
     // Aggiungere altri campi
 }
 impl Settings {
@@ -33,19 +37,26 @@ impl Settings {
         return Settings {
             filters: String::new(),
             csv: false,
+            timeout: 10,
+            filename: String::new(),
         }
     }
 }
 
-pub fn print_index() -> () {
+pub fn print_index(settings: &Vec<String>) -> () {
+    let mut index = 4;
     //print!("{}[2J", 27 as char);
     println!("Packet Swiffer v.1.0");
     println!("Author: Barletta Francesco Pio, Cosimo Simone, Ferla Damiano");
     println!("Politecnico di Torino - All Rights Deserved");
     println!("\n");
-    
     println!("1.\t Start Sniffing");
     println!("2.\t Set Filters");
+    println!("3.\t CSV mode");
+    for setting in settings {
+        println!("{}.\t {}", index, setting);
+        index += 1;
+    }
     println!("\n\n");
     println!("While sniffing, press P to stop/resume");
 }
@@ -54,10 +65,23 @@ pub fn print_index() -> () {
 Da sistemare la struct da popolare
 */
 pub fn menu() -> Settings {
+    let args = Args::parse();
+    let mut conditional_settings = Vec::<String>::new();
+    if args.timeout == 10 {
+        conditional_settings.push("Set Timeout".to_string());
+    }
+    if args.filename == "report" {
+        conditional_settings.push("Set Filename".to_string());
+    }
+    if args.list == false {
+        conditional_settings.push("Show Interfaces".to_string());
+    }
     let mut filters = Filter::new();
     let mut csv = false;
+    let mut timeout = 10;
+    let mut filename = "report".to_string();
     loop {
-        print_index();
+        print_index(&conditional_settings);
         let mut buffer = String::new();
         buffer.clear();
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
@@ -68,6 +92,36 @@ pub fn menu() -> Settings {
             "2" => {
                 filters = print_filter();
             }
+            "3" => {
+                println!("CSV mode? (Y/N)");
+                buffer.clear();
+                io::stdin().read_line(&mut buffer).expect("Failed to read line");
+                if buffer.trim() == "Y" {
+                    csv = true;
+                }
+            }
+            "4" => {
+                if conditional_settings[0] == "Set Timeout" {
+                    timeout = set_timeout();
+                }
+                else if conditional_settings[0] == "Set Filename" {
+                    filename = set_filename();
+                }
+                else if conditional_settings[0] == "Show Interfaces" {
+                    print_interface();
+                }
+            }
+            "5" => {
+                if conditional_settings[1] == "Set Filename" {
+                    filename = set_filename();
+                }
+                else if conditional_settings[1] == "Show Interfaces" {
+                    print_interface();
+                }
+            }
+            "6" => {
+                print_interface();
+            }
             _ => {
                 println!("Wrong command.");
             }
@@ -76,6 +130,8 @@ pub fn menu() -> Settings {
     let mut settings = Settings {
         filters: parse_filter(filters),
         csv: csv,
+        timeout: timeout,
+        filename: filename,
     };
     return settings;    
 }
@@ -279,4 +335,33 @@ pub fn check_port_number(string: &String) -> bool {
         }
     } 
     return false;
+}
+pub fn set_timeout() -> u32 {
+    let mut buffer = String::new();
+    loop {
+        println!("Inserisci timeout: ");
+        io::stdin().read_line(&mut buffer).expect("Failed to read line");
+        if buffer.trim().parse::<u32>().is_ok() {
+            println!("{}", buffer);
+            break;
+        }
+    }
+    return buffer.trim().parse::<u32>().unwrap();
+}
+pub fn set_filename() -> String {
+    let mut buffer = String::new();
+    println!("Inserisci il nome con cui vuoi salvare il report: ");
+    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+    return buffer.trim().to_string();
+}
+pub fn print_interface() -> () {
+    let interfaces = Device::list().unwrap();
+    println!("The following interfaces are available");
+    println!("{0: <20} | {1: <20}", "Name", "Description");
+    println!("---------------------------------------------------------------------");
+    interfaces.into_iter()
+        .for_each(|i| println!("{0: <20} | {1: <20}", i.name, i.desc.unwrap_or("None".to_string())));
+    let mut buffer = String::new();
+    println!("Premi un bottone per tornare al menù principale");
+    io::stdin().read_line(&mut buffer).expect("Failed to read line");
 }
