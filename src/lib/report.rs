@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::fmt;
-use std::fs::File;
+use std::fs::{create_dir, File, set_permissions};
 use std::path::Path;
 use std::net::IpAddr;
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 
 use csv::{Writer, WriterBuilder};
 use serde::Serialize;
@@ -46,11 +48,11 @@ pub struct ReportWriter {
 }
 
 impl ReportWriter {
-    pub fn new(csv_mode: bool, filename: &str, index: i32) -> Self {
+    pub fn new(csv_mode: bool, folder: &str, filename: &str, index: i32) -> Self {
         match csv_mode {
             true => {
                 let file = match WriterBuilder::new().has_headers(false).from_path(
-                    format!("{}-{}.csv", filename, index)
+                    format!("{}/{}-{}.csv", folder, filename, index)
                 ) {
                     Err(why) => panic!("couldn't create {}.csv: {}", filename, why),
                     Ok(file) => file,
@@ -63,7 +65,7 @@ impl ReportWriter {
                 }
             },
             false => {
-                let pathname = format!("{}-{}.txt", filename, index);
+                let pathname = format!("{}/{}-{}.txt", folder, filename, index);
                 let path = Path::new(&pathname);
                 let file = match File::create(&path) {
                     Err(why) => panic!("couldn't create {}: {}", path.display(), why),
@@ -122,5 +124,64 @@ impl ReportWriter {
             _ => ()
         }
     }
+}
 
+pub fn setup_directory(filename: &str) -> String {
+    let mut folder = format!(
+        "{}_{}",
+        filename,
+        chrono::offset::Local::now().naive_local()
+    );
+    folder = folder[..folder.len()-10].to_string();
+    folder = folder.replace(" ", "_").replace("-", "").replace(":", "_");
+
+    // Create the directory for the current sniffing session
+    match create_dir(&folder) {
+        Ok(()) => (),
+        Err(why) => panic!("{}", why)
+    }
+
+    match set_permissions(&folder, PermissionsExt::from_mode(0o777)) {
+        Err(why) => panic!("{}", why),
+        Ok(_) => {},
+    }
+
+    folder
+}
+
+pub fn produce_hashmap(buffer: Vec<Packet>) -> HashMap<ReportHeader, Report> {
+    let mut report = HashMap::new();
+
+    for s in buffer {
+        let bytes = s.length;
+
+        let p_header = ReportHeader {
+            src_addr: s.src_addr,
+            dest_addr: s.dest_addr,
+            src_port: s.src_port,
+            dest_port: s.dest_port
+        };
+
+        if report.contains_key(&p_header) {
+            let mut update: &mut Report = report.get_mut(&p_header).unwrap();
+            update.total_bytes += bytes as u64;
+            update.stop_time = s.timestamp;
+        } else {
+
+            report.insert(p_header, {
+                let time = s.timestamp.clone();
+                let time2 = s.timestamp.clone();
+
+                Report {
+                    packet: s,
+                    total_bytes: bytes as u64,
+                    start_time: time,
+                    stop_time: time2
+                }
+            });
+        }
+        //writeln!(&mut file, "{}", s).unwrap();
+    }
+
+    report
 }

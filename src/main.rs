@@ -5,13 +5,10 @@ use std::thread;
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
-use std::collections::HashMap;
 
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
-use packet_swiffer::report::ReportWriter;
-use packet_swiffer::report::Report;
-use packet_swiffer::report::ReportHeader;
+use packet_swiffer::report::{produce_hashmap, ReportWriter, setup_directory};
 
 use clap::Parser;
 use pcap::{Device, Capture};
@@ -92,6 +89,10 @@ fn main() {
         let timer = timer::Timer::new();
         let mut index = 0;
         let filename = format!("{}", report_fn);
+
+        // Crete the directory for the sniffing
+        let dirname = setup_directory(&filename);
+
         loop {
             let mut buffer = Vec::<Packet>::new();
             let timer_flag_clone = timer_flag.clone();
@@ -110,45 +111,14 @@ fn main() {
                 drop(flag);
             }
 
-            let mut report = HashMap::new();
-
-            let mut rw = ReportWriter::new(csv_mode, filename.as_str(), index);
+            let mut rw = ReportWriter::new(csv_mode, &dirname, &filename, index);
             rw.report_init();
 
-            for s in buffer {
-                let bytes = s.length;
-
-                let p_header = ReportHeader {
-                    src_addr: s.src_addr,
-                    dest_addr: s.dest_addr,
-                    src_port: s.src_port,
-                    dest_port: s.dest_port
-                };
-
-                if report.contains_key(&p_header) {
-                    let mut update: &mut Report = report.get_mut(&p_header).unwrap();
-                    update.total_bytes += bytes as u64;
-                    update.stop_time = s.timestamp;
-                } else {
-
-                    report.insert(p_header, {
-                        let time = s.timestamp.clone();
-                        let time2 = s.timestamp.clone();
-
-                        Report {
-                            packet: s,
-                            total_bytes: bytes as u64,
-                            start_time: time,
-                            stop_time: time2
-                        }
-                    });
-                }
-                //writeln!(&mut file, "{}", s).unwrap();
+            let report = produce_hashmap(buffer);
+            for (_, info) in report {
+                rw.write(info);
             }
 
-            for pk in report {
-                rw.write(pk.1);
-            }
             println!("[{}] Report #{} generated", chrono::offset::Local::now().naive_local(), index);
             rw.close();
             index += 1;
