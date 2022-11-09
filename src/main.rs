@@ -146,11 +146,19 @@ fn main() {
             
         }
     });
+    let packet_arrived = Arc::new(Mutex::new(false));
+    let packet_arrived_parsing_clone = packet_arrived.clone();
+    let packet_arrived_report_clone = packet_arrived.clone();
 
     // Thread needed to perform parsing of received packet
     let parsing_thread = thread::spawn(move | | {
         // TODO: add macos/ios support
         while let Ok(p) = rx_thread.recv() {
+            // Segnalo che il pacchetto sia arrivato
+            let mut packet_arrived_flag = packet_arrived_parsing_clone.lock().unwrap();
+            *packet_arrived_flag = true;
+            drop(packet_arrived_flag);
+
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
             // let packet_string = &p[0..10];
             match packet_string {
@@ -174,16 +182,16 @@ fn main() {
         let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
         let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
-            // Prendi pause lock
-            // Controlla se pause == true
-            // Se si, drop(guard_timer)
             let (lock, cvar) = &*pair3;
+            let packet_arrived_flag = packet_arrived_report_clone.lock().unwrap();
             let mut pause_flag = lock.lock().unwrap();
-            if *pause_flag == false{
+            if *pause_flag == false && *packet_arrived_flag == true {
                 let mut flag = timer_flag_clone.lock().unwrap();
                 *flag = true;
+                drop(flag);
             }
             drop(pause_flag);
+            drop(packet_arrived_flag);
         });
         loop {
             let mut buffer = Vec::<Packet>::new();
