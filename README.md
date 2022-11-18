@@ -1,4 +1,8 @@
-# packetSwiffer
+<p align="center">
+  <img width="550" height="300" src="logo.png">
+</p>
+<h1 align="center">packetSwiffer</h1>
+
 ## Introduction
 **packetSwiffer** is a library that uses the rust `libpcap` library to capture packets on Windows, Linux and macOS.\
 The library allows the user to capture packet on a user specified network adapter by setting it in promiscuous mode, and generates reports on the traffic observed after a specified time interval.\
