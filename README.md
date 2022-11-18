@@ -9,7 +9,7 @@ The information for installing 'pcap' is available on the rust libpcap github (h
 
 ## Structs
 
-- ### [Packet](./docs/struct/)
+- ### [Packet](./docs/struct/packet.md)
 - ### [ReportHeader](./docs/struct/reportHeader.md)
 - ### [Report](./docs/struct/report.md)
 
