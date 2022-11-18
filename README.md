@@ -4,8 +4,84 @@
 The library allows the user to capture packet on a user specified network adapter by setting it in promiscuous mode, and generates reports on the traffic observed after a specified time interval.\
 The report is organized by source and destination port and address, and shows information about the number of bytes exchanged, the transport and application protocols (see caveats section for the application layer information limitations), and a time of first and last packet exchange.
 
-##Functions
+## Dependencies
+The information for installing 'pcap' is available on the rust libpcap github (https://github.com/rust-pcap/pcap). For Windows the library suggested is no longer maintained, so you should install Npcap instead, together with the Npcap SDK, and add the sdk to your environment variables
 
-##Errors
+## Structs
 
-##How to use
+### Packet
+Represents a packet returned from the parsing function
+
+```rust
+pub struct Packet {
+    pub interface: String,
+    pub src_addr: IpAddr,
+    pub dest_addr: IpAddr,
+    pub res_name: String,
+    pub src_port: Option<u16>,
+    pub dest_port: Option<u16>,
+    pub length: u16,
+    pub transport: String,
+    pub application: String,
+    pub timestamp: String
+}
+```
+
+### ReportHeader
+Represents the informations used for grouping in the Report
+
+```rust
+pub struct ReportHeader {
+    src_addr: IpAddr,
+    dest_addr: IpAddr,
+    src_port: Option<u16>,
+    dest_port: Option<u16>
+}
+```
+
+### Report
+Represents the informations used to produce the Report
+
+```rust
+pub struct Report {
+    packet: Packet,
+    total_bytes: u64,
+    start_time: String,
+    stop_time: String
+}
+```
+
+## Enum
+
+### Error
+Represents the possible errors while parsing a packet
+
+```rust
+pub enum Error {
+    ParsingError,
+    UnknownPacket,
+    ARPParsingError,
+    IPv6ParsingError,
+    IPv4ParsingError,
+    ICMPParsingError,
+    TCPParsingError,
+    UDPParsingError,
+    EthernetParsingError
+}
+```
+
+## Errors
+Most public functions return a `Result`, the possible errors are the following:
+
+* `NoSuchDevice`: No such network interface
+* `ARPParsingError`: Error while parsing ARP Packet
+* `ParsingError`: Error while parsing
+* `UnknownPacket`: Unknown Packet
+* `IPv6ParsingError`: Error while parsing IPv6 Packet
+* `IPv4ParsingError`: Error while parsing IPv4 Packet
+* `ICMPParsingError`: Error while parsing ICMP Packet
+* `TCPParsingError`: Error while parsing TCP Packet
+* `UDPParsingError`: Error while parsing UDP Packet
+* `EthernetParsingError`: Error while parsing Ethernet Packet
+
+## How to use
