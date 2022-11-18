@@ -9,7 +9,7 @@ The information for installing 'pcap' is available on the rust libpcap github (h
 
 ## Structs
 
-### Packet
+### [Packet](./docs/struct/packet.md)
 Represents a packet returned from the parsing function
 
 ```rust
@@ -27,7 +27,7 @@ pub struct Packet {
 }
 ```
 
-### ReportHeader
+### [ReportHeader](./docs/struct/reportHeader.md)
 Represents the informations used for grouping in the Report
 
 ```rust
@@ -39,7 +39,7 @@ pub struct ReportHeader {
 }
 ```
 
-### Report
+### [Report](./docs/struct/report.md)
 Represents the informations used to produce the Report
 
 ```rust
@@ -53,7 +53,7 @@ pub struct Report {
 
 ## Enum
 
-### Error
+### [Error](./docs/enum/error.md)
 Represents the possible errors while parsing a packet
 
 ```rust
