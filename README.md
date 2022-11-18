@@ -9,66 +9,14 @@ The information for installing 'pcap' is available on the rust libpcap github (h
 
 ## Structs
 
-### [Packet](./docs/struct/packet.md)
-Represents a packet returned from the parsing function
+- ### [Packet](./docs/struct/)
+- ### [ReportHeader](./docs/struct/reportHeader.md)
+- ### [Report](./docs/struct/report.md)
 
-```rust
-pub struct Packet {
-    pub interface: String,
-    pub src_addr: IpAddr,
-    pub dest_addr: IpAddr,
-    pub res_name: String,
-    pub src_port: Option<u16>,
-    pub dest_port: Option<u16>,
-    pub length: u16,
-    pub transport: String,
-    pub application: String,
-    pub timestamp: String
-}
-```
-
-### [ReportHeader](./docs/struct/reportHeader.md)
-Represents the informations used for grouping in the Report
-
-```rust
-pub struct ReportHeader {
-    src_addr: IpAddr,
-    dest_addr: IpAddr,
-    src_port: Option<u16>,
-    dest_port: Option<u16>
-}
-```
-
-### [Report](./docs/struct/report.md)
-Represents the informations used to produce the Report
-
-```rust
-pub struct Report {
-    packet: Packet,
-    total_bytes: u64,
-    start_time: String,
-    stop_time: String
-}
-```
 
 ## Enum
 
-### [Error](./docs/enum/error.md)
-Represents the possible errors while parsing a packet
-
-```rust
-pub enum Error {
-    ParsingError,
-    UnknownPacket,
-    ARPParsingError,
-    IPv6ParsingError,
-    IPv4ParsingError,
-    ICMPParsingError,
-    TCPParsingError,
-    UDPParsingError,
-    EthernetParsingError
-}
-```
+- ### [Error](./docs/enum/error.md)
 
 ## Errors
 Most public functions return a `Result`, the possible errors are the following:
