@@ -49,7 +49,8 @@ Options:
 -f, --filename <FILENAME>    Optional filename for generated report (<filename>_<seq_num>.txt) [default: report]        
 -i, --interface <INTERFACE>  Name of the interface to be used for the sniffing                                          
 -p, --promisc                Set the interface in promiscuous mode                                                      
--l, --list                   Show the net interfaces present in the system without launching the sniffing               
+-l, --list                   Show the net interfaces present in the system without launching the sniffing  
+    --csv                    Set report file type to csv instead of default txt
 -h, --help                   Print help information                                                                     
 -V, --version                Print version information 
 ```
