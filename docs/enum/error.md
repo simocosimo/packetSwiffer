@@ -21,6 +21,7 @@ pub enum Error {
 impl Display for Error 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result 
 ```
+_Formats the value using the given formatter_
 
 ```rust
 impl std::error::Error for Error {}

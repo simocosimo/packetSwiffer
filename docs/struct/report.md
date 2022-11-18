@@ -14,5 +14,6 @@ pub struct Report {
 
 ```rust
 impl Display for Report 
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result 
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
 ```
+_Formats the value using the given formatter_

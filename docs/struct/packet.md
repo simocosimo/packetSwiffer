@@ -32,6 +32,7 @@ pub fn new(
         timestamp: String
     ) -> Self
 ```
+_Return a new `Packet` given a set of parameters_
 
 ## Trait Implementations
 
@@ -39,3 +40,4 @@ pub fn new(
 impl Display for Packet 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result 
 ```
+_Formats the value using the given formatter_
