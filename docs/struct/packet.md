@@ -15,3 +15,27 @@ pub struct Packet {
     pub timestamp: String
 }
 ```
+
+## Implementations 
+
+```rust 
+pub fn new(
+        interface: String,
+        src_addr: IpAddr,
+        dest_addr: IpAddr,
+        res_name: String,
+        src_port: Option<u16>,
+        dest_port: Option<u16>,
+        length: u16,
+        transport: String,
+        application: String,
+        timestamp: String
+    ) -> Self
+```
+
+## Trait Implementations
+
+```rust
+impl Display for Packet 
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result 
+```

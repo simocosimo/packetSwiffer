@@ -9,3 +9,10 @@ pub struct Report {
     stop_time: String
 }
 ```
+
+## Trait Implementations
+
+```rust
+impl Display for Report 
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result 
+```

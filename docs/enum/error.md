@@ -14,3 +14,14 @@ pub enum Error {
     EthernetParsingError
 }
 ```
+
+## Trait Implementations
+
+```rust
+impl Display for Error 
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result 
+```
+
+```rust
+impl std::error::Error for Error {}
+```
