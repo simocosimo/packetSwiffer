@@ -43,11 +43,11 @@ Most public functions return a `Result`, the possible errors are the following:
 * `EthernetParsingError`: Error while parsing Ethernet Packet
 
 ## Usage
-NOTE: The application needs to be run with admin priviledges in order to correctly use the specified interface to sniff traffic.
+**NOTE**: The application needs to be run with admin priviledges in order to correctly use the specified interface to sniff traffic.
 
 The application can be run with the following arguments:
 ```
-Usage: swiffer [OPTIONS] --interface <INTERFACE>
+Usage: swiffer [OPTIONS]
 Options:                                                                                                                  
 -t, --timeout <TIMEOUT>      Optional timeout for report generation (in seconds) [default: 10]                          
 -f, --filename <FILENAME>    Optional filename for generated report (<filename>_<seq_num>.txt) [default: report]        
@@ -58,10 +58,4 @@ Options:
 -h, --help                   Print help information                                                                     
 -V, --version                Print version information 
 ```
-The only mandatory command line argument is the interface name. 
-If you don't know the identifier of your network interface, you can run 
-```
-sudo ./swiffer -l
-``` 
-in order to see a list of them.
-
+You have to run the application with the `--interface` flag (to start the sniffing with the specified network interface id) **OR** with the `--list` one (in order to list the available network interfaces).
