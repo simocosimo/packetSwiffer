@@ -21,5 +21,9 @@ pub struct Args {
 
     /// Show the net interfaces present in the system without launching the sniffing
     #[arg(short, long, action)]
-    pub list: bool
+    pub list: bool,
+
+    /// Set report file type to csv instead of default txt
+    #[arg(long, action)]
+    pub csv: bool
 }

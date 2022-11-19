@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use timer;
 use chrono;
 
-use std::{fmt, thread};
+use std::thread;
 use std::process;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::channel;
@@ -18,42 +17,21 @@ use std::net::IpAddr;
 use pcap::{Device, Capture};
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
+use packet_swiffer::report::{produce_hashmap, ReportWriter, setup_directory};
 
 
 use clap::Parser;
-use csv::WriterBuilder;
-use serde::Serialize;
-
-#[derive(PartialEq, Eq, Hash)]
-pub struct ReportHeader {
-    src_addr: IpAddr,
-    dest_addr: IpAddr,
-    src_port: Option<u16>,
-    dest_port: Option<u16>
-}
-
-#[derive(Serialize)]
-pub struct Report {
-    packet: Packet,
-    total_bytes: u64,
-    start_time: String,
-    stop_time: String
-}
-
-impl fmt::Display for Report {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        //        "Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Timestamp\t|  Bytes\t| Transport \t| Application \n"
-        write!(f, "| {0: <1}\t| {1: <20}\t| {2: <5}\t| {3: <25} ({4}) \t| {5: <5}\t| {6: <3}\t| {7: <4} \t| {8: <4}\t| {9: <15}\t| {10: <15}", self.packet.interface, self.packet.src_addr, self.packet.src_port.unwrap_or(0), self.packet.dest_addr, self.packet.res_name, self.packet.dest_port.unwrap_or(0), self.total_bytes, self.packet.transport, self.packet.application, self.start_time, self.stop_time )
-    }
-}
+use pcap::{Device, Capture};
 
 fn main() {
 
     let args = Args::parse();
     let interface_name = args.interface;
     let promisc_mode = args.promisc;
-    //let report_delay = args.timeout;
-    //let report_fm = args.filename;
+    let report_delay = args.timeout;
+    let report_fn = args.filename;
+    let list_mode = args.list;
+    let csv_mode = args.csv;
     let list_mode = args.list;
     
     // Print menu
@@ -93,7 +71,6 @@ fn main() {
     let (tx_thread, rx_thread) = channel::<Vec<u8>>();
 
     // Channel used to pass parsed packets to the report_thread
-    // TODO: is string the best structure? Don't think so, maybe a custom one is better
     let (tx_report, rx_report) = channel::<Packet>();
 
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
@@ -150,7 +127,7 @@ fn main() {
 
     // Thread needed to perform parsing of received packet
     let parsing_thread = thread::spawn(move | | {
-        // TODO: add macos/ios support
+
         while let Ok(p) = rx_thread.recv() {
             // Segnalo che il pacchetto sia arrivato
             let mut packet_arrived_flag = packet_arrived_parsing_clone.lock().unwrap();
@@ -158,7 +135,6 @@ fn main() {
             drop(packet_arrived_flag);
 
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
-            // let packet_string = &p[0..10];
             match packet_string {
                 Ok(pk) => {
                     println!("{}", pk);
@@ -170,11 +146,9 @@ fn main() {
         }
     });
 
-    // TODO: temporary shared data to test report generation
     let timer_flag = Arc::new(Mutex::new(false));
 
 
-    // TODO: create thread that analyze packets and produce report (synch should be done with mutex on structure)
     let report_thread = thread::spawn(move | | {
         let timer = timer::Timer::new();
         let timer_flag_clone = timer_flag.clone();
@@ -204,10 +178,7 @@ fn main() {
                     "tot_bytes", "start_time", "stop_time"]
             ).unwrap();
             let path = Path::new(&pathname);
-
             while let Ok(packet) = rx_report.recv() {
-                // TODO: here we should aggregate info about the traffic in a smart way
-                // let tmp_string = String::from(format!("{}", packet));
                 buffer.push(packet);
                 let mut flag = timer_flag.lock().unwrap();
                 if *flag{
@@ -217,55 +188,17 @@ fn main() {
                 }
                 drop(flag);
             }
-            // TODO: create a file for every report, just temporary, discuss better solutions
-            // Write info on report file
-            let mut file = match File::create(&path) {
-                Err(why) => panic!("couldn't create {}: {}", path.display(), why),
-                Ok(file) => file,
-            };
 
-            let mut report = HashMap::new();
+            let mut rw = ReportWriter::new(csv_mode, &dirname, &filename, index);
+            rw.report_init();
 
-            writeln!(&mut file, "Report #{}\n", index).unwrap();
-            writeln!(&mut file, "| Interface\t| Source IP address\t| Source Port\t| Dest IP address \t| Dest Port\t| Tot Bytes\t| Transport \t| Application \t| First Timestamp \t| Last Timestamp \n").unwrap();
-
-            for s in buffer {
-                let bytes = s.length;
-
-                let p_header = ReportHeader {
-                    src_addr: s.src_addr,
-                    dest_addr: s.dest_addr,
-                    src_port: s.src_port,
-                    dest_port: s.dest_port
-                };
-
-                if report.contains_key(&p_header) {
-                    let mut update: &mut Report = report.get_mut(&p_header).unwrap();
-                    update.total_bytes += bytes as u64;
-                    update.stop_time = s.timestamp;
-                } else {
-
-                    report.insert(p_header, {
-                        let time = s.timestamp.clone();
-                        let time2 = s.timestamp.clone();
-
-                        Report {
-                            packet: s,
-                            total_bytes: bytes as u64,
-                            start_time: time,
-                            stop_time: time2
-                        }
-                    });
-                }
-                //writeln!(&mut file, "{}", s).unwrap();
+            let report = produce_hashmap(buffer);
+            for (_, info) in report {
+                rw.write(info);
             }
 
-            for pk in report {
-                writeln!(&mut file, "{}", pk.1).unwrap();
-                csv_wrt.serialize(pk.1).unwrap();
-            }
-            println!("[{}] Report #{} generated", chrono::offset::Local::now(), index);
-            csv_wrt.flush().unwrap();
+            println!("[{}] Report #{} generated", chrono::offset::Local::now().naive_local(), index);
+            rw.close();
             index += 1;
         }
     });
