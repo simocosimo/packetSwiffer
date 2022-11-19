@@ -19,6 +19,17 @@ impl Filter {
                       port_dest: String::new(),
                       transport_protocol: String::new()};
     }
+
+    pub fn with_args(ip_source: String, ip_dest: String, port_source: String, port_dest: String, transport_protocol: String) -> Self {
+        return Filter {
+            ip_source,
+            ip_dest,
+            port_source,
+            port_dest,
+            transport_protocol
+        };
+    }
+
     pub fn as_array(&self) -> [String; 5] {
         return [self.ip_source.clone(), self.ip_dest.clone(), self.port_source.clone(), self.port_dest.clone(), self.transport_protocol.clone()];
     }
@@ -129,6 +140,7 @@ pub fn menu() -> Settings {
             }
         }
     }
+    // println!("Filters before parsing: {:?}", filters);
     let settings = Settings {
         filters: parse_filter(filters),
         csv: Some(csv),
@@ -164,7 +176,7 @@ pub fn print_filter() -> Filter{
     let mut vec_transport_protocol: Vec<String> = Vec::new();
     //let mut transport_protocol = String::new();
 
-    let filter = Filter::new();
+    // let mut filter = Filter::new();
     loop {
         filter_menu();
         buffer.clear();
@@ -198,19 +210,19 @@ pub fn print_filter() -> Filter{
                 let port_dest = vec_port_dest.join(" or ");
                 let transport_protocol = vec_transport_protocol.join(" or ");                
 
-                let _filter = Filter{
-                    ip_source: ip_source,
-                    ip_dest: ip_dest,
-                    port_source: port_source,
-                    port_dest: port_dest,
-                    transport_protocol: transport_protocol,
-                };
-                break;
+                return Filter::with_args(
+                    ip_source,
+                    ip_dest,
+                    port_source,
+                    port_dest,
+                    transport_protocol,
+                );
+                // break;
             }
             _ => {}
         }
     }
-    return filter;   
+    // return filter;
 }
 
 pub fn filter_ip_source() -> String {

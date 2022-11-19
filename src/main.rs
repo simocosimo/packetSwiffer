@@ -46,6 +46,7 @@ fn main() {
 
     // Print menu
     let settings = menu();
+    // println!("Filters in main: {}", settings.filters);
     let report_fn = if settings.filename.is_some() { settings.filename.unwrap() } else { args.filename };
     let csv_mode = if settings.csv.is_some() { settings.csv.unwrap() } else { args.csv };
     let timeout = if settings.timeout.is_some() { settings.timeout.unwrap() } else { args.timeout };
