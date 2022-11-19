@@ -22,10 +22,7 @@ fn main() {
     let args = Args::parse();
     let interface_name = args.interface;
     let promisc_mode = args.promisc;
-    let _report_delay = args.timeout;
     let report_fn = args.filename;
-    let _list_mode = args.list;
-    let csv_mode = args.csv;
     let list_mode = args.list;
     
     // Print menu
@@ -147,7 +144,7 @@ fn main() {
         let timer = timer::Timer::new();
         let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
-        let filename = format!("{}", report_fn);
+        let filename = format!("{}", settings.filename);
         let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
             let (lock, _cvar) = &*pair3;
             let packet_arrived_flag = packet_arrived_report_clone.lock().unwrap();
@@ -175,7 +172,7 @@ fn main() {
                 drop(flag);
             }
 
-            let mut rw = ReportWriter::new(csv_mode, &dirname, &filename, index);
+            let mut rw = ReportWriter::new(settings.csv, &dirname, &filename, index);
             rw.report_init();
 
             let report = produce_hashmap(buffer);

@@ -28,9 +28,8 @@ impl Filter {
 pub struct Settings {
     pub filters: String,
     pub csv: bool, 
-    pub timeout: u32,
+    pub timeout: i64,
     pub filename: String,
-    // Aggiungere altri campi
 }
 impl Settings {
     pub fn new() -> Self {
@@ -77,9 +76,9 @@ pub fn menu() -> Settings {
         conditional_settings.push("Show Interfaces".to_string());
     }
     let mut filters = Filter::new();
-    let mut csv = false;
-    let mut timeout = 10;
-    let mut filename = "report".to_string();
+    let mut csv = args.csv;
+    let mut timeout = args.timeout;
+    let mut filename = args.filename;
     loop {
         print_index(&conditional_settings);
         let mut buffer = String::new();
@@ -98,6 +97,9 @@ pub fn menu() -> Settings {
                 io::stdin().read_line(&mut buffer).expect("Failed to read line");
                 if buffer.trim() == "Y" {
                     csv = true;
+                }
+                else {
+                    csv = false;
                 }
             }
             "4" => {
@@ -336,17 +338,17 @@ pub fn check_port_number(string: &String) -> bool {
     } 
     return false;
 }
-pub fn set_timeout() -> u32 {
+pub fn set_timeout() -> i64 {
     let mut buffer = String::new();
     loop {
         println!("Inserisci timeout: ");
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
-        if buffer.trim().parse::<u32>().is_ok() {
+        if buffer.trim().parse::<i64>().is_ok() {
             println!("{}", buffer);
             break;
         }
     }
-    return buffer.trim().parse::<u32>().unwrap();
+    return buffer.trim().parse::<i64>().unwrap();
 }
 pub fn set_filename() -> String {
     let mut buffer = String::new();
