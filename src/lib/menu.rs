@@ -27,17 +27,17 @@ impl Filter {
 #[derive(Debug)]
 pub struct Settings {
     pub filters: String,
-    pub csv: bool, 
-    pub timeout: i64,
-    pub filename: String,
+    pub csv: Option<bool>,
+    pub timeout: Option<i64>,
+    pub filename: Option<String>,
 }
 impl Settings {
     pub fn new() -> Self {
         return Settings {
             filters: String::new(),
-            csv: false,
-            timeout: 10,
-            filename: String::new(),
+            csv: None,
+            timeout: None,
+            filename: None,
         }
     }
 }
@@ -131,9 +131,9 @@ pub fn menu() -> Settings {
     }
     let settings = Settings {
         filters: parse_filter(filters),
-        csv: csv,
-        timeout: timeout,
-        filename: filename,
+        csv: Some(csv),
+        timeout: Some(timeout),
+        filename: Some(filename),
     };
     return settings;    
 }

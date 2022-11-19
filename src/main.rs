@@ -8,12 +8,13 @@ use std::sync::mpsc::channel;
 
 use std::io::Write;
 use std::io;
-use::packet_swiffer::menu::menu;
+use std::string::String;
 
 use pcap::{Device, Capture};
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 use packet_swiffer::report::{produce_hashmap, ReportWriter, setup_directory};
+use::packet_swiffer::menu::menu;
 
 use clap::Parser;
 
@@ -21,9 +22,8 @@ fn main() {
 
     let args = Args::parse();
     let interface_name = args.interface;
-    let promisc_mode = args.promisc;
-    let report_fn = args.filename;
     let list_mode = args.list;
+    let promisc_mode = args.promisc;
 
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
@@ -46,6 +46,9 @@ fn main() {
 
     // Print menu
     let settings = menu();
+    let report_fn = if settings.filename.is_some() { settings.filename.unwrap() } else { args.filename };
+    let csv_mode = if settings.csv.is_some() { settings.csv.unwrap() } else { args.csv };
+    let timeout = if settings.timeout.is_some() { settings.timeout.unwrap() } else { args.timeout };
 
     // println!("Promisc mode: {}", promisc_mode);
     let interface = interfaces
@@ -77,7 +80,7 @@ fn main() {
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
         let (lock, _cvar) = &*pair;
-        println!("Premi il tasto P per mettere in pausa lo sniffing");
+        // println!("Premi il tasto P per mettere in pausa lo sniffing");
         if settings.filters != "" {
             cap.filter(&settings.filters, false).unwrap();
         }
@@ -101,7 +104,7 @@ fn main() {
             match buffer.as_str().trim() {
                 "P" => {
                     let mut pause = lock.lock().unwrap();
-                    println!("Controllo a pause_thread");
+                    // println!("Controllo a pause_thread");
                     if *pause == true {
                         *pause = false;
                         println!("Sniffing ripreso!");
@@ -150,9 +153,9 @@ fn main() {
         let timer = timer::Timer::new();
         let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
-        let filename = format!("{}", settings.filename);
+        let filename = format!("{}", report_fn);
 
-        let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
+        let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(timeout.into()), move || {
             let (lock, _cvar) = &*pair3;
             let packet_arrived_flag = packet_arrived_report_clone.lock().unwrap();
             let pause_flag = lock.lock().unwrap();
@@ -182,7 +185,7 @@ fn main() {
                 drop(flag);
             }
 
-            let mut rw = ReportWriter::new(settings.csv, &dirname, &filename, index);
+            let mut rw = ReportWriter::new(csv_mode, &dirname, &filename, index);
             rw.report_init();
 
             let report = produce_hashmap(buffer);
