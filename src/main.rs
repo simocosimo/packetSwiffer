@@ -3,12 +3,22 @@ use chrono;
 
 use std::thread;
 use std::process;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::channel;
 
+use std::fs::File;
+use std::path::Path;
+use std::io::Write;
+use std::io;
+use::packet_swiffer::menu::menu;
+
+use std::net::IpAddr;
+
+use pcap::{Device, Capture};
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 use packet_swiffer::report::{produce_hashmap, ReportWriter, setup_directory};
+
 
 use clap::Parser;
 use pcap::{Device, Capture};
@@ -22,7 +32,11 @@ fn main() {
     let report_fn = args.filename;
     let list_mode = args.list;
     let csv_mode = args.csv;
-
+    let list_mode = args.list;
+    
+    // Print menu
+    let settings = menu();
+    
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
 
@@ -59,18 +73,67 @@ fn main() {
     // Channel used to pass parsed packets to the report_thread
     let (tx_report, rx_report) = channel::<Packet>();
 
+    let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    let pair2 = Arc::clone(&pair);
+    let pair3 = Arc::clone(&pair);
+
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
-        // TODO: add a mechanism to stop/resume packet sniffing
+        let (lock, _cvar) = &*pair;
+        println!("Premi il tasto P per mettere in pausa lo sniffing");
+        if settings.filters != "" {
+            cap.filter(&settings.filters, false).unwrap();
+        }
         while let Ok(packet) = cap.next_packet() {
+            let pause = lock.lock().unwrap();
             let owned_packet = packet.to_owned();
-            tx_thread.send(owned_packet.to_vec()).unwrap();
+            if !*pause {
+                tx_thread.send(owned_packet.to_vec()).unwrap();
+            }
+            drop(lock);
         }
     });
 
+    // Thread used to pause/resume
+    let pause_thread = thread::spawn(move || {
+        let (lock, _cvar) = &*pair2;
+        let mut buffer = String::new();
+        loop {
+            buffer.clear();
+            io::stdin().read_line(&mut buffer).expect("Failed to read line");
+            match buffer.as_str().trim() {
+                "P" => {
+                    let mut pause = lock.lock().unwrap();
+                    println!("Controllo a pause_thread");
+                    if *pause == true {
+                        *pause = false;
+                        println!("Sniffing ripreso!");
+                    }
+                    else {
+                        *pause = true;
+                        println!("Sniffing stoppato!");
+                    }
+                    io::stdout().flush().unwrap();
+                    drop(pause);
+                }
+                _ => {}
+            }
+            
+        }
+    });
+    let packet_arrived = Arc::new(Mutex::new(false));
+    let packet_arrived_parsing_clone = packet_arrived.clone();
+    let packet_arrived_report_clone = packet_arrived.clone();
+
     // Thread needed to perform parsing of received packet
     let parsing_thread = thread::spawn(move | | {
+
         while let Ok(p) = rx_thread.recv() {
+            // Segnalo che il pacchetto sia arrivato
+            let mut packet_arrived_flag = packet_arrived_parsing_clone.lock().unwrap();
+            *packet_arrived_flag = true;
+            drop(packet_arrived_flag);
+
             let packet_string = handle_ethernet_frame(&cloned_interface, &p);
             match packet_string {
                 Ok(pk) => {
@@ -85,25 +148,40 @@ fn main() {
 
     let timer_flag = Arc::new(Mutex::new(false));
 
+
     let report_thread = thread::spawn(move | | {
         let timer = timer::Timer::new();
+        let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
-        let filename = format!("{}", report_fn);
-
-        // Crete the directory for the sniffing
-        let dirname = setup_directory(&filename);
-
-        loop {
-            let mut buffer = Vec::<Packet>::new();
-            let timer_flag_clone = timer_flag.clone();
-            let _guard = timer.schedule_with_delay(chrono::Duration::seconds(report_delay), move | | {
+        let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
+            let (lock, _cvar) = &*pair3;
+            let packet_arrived_flag = packet_arrived_report_clone.lock().unwrap();
+            let pause_flag = lock.lock().unwrap();
+            if *pause_flag == false && *packet_arrived_flag == true {
                 let mut flag = timer_flag_clone.lock().unwrap();
                 *flag = true;
-            });
+                drop(flag);
+            }
+            drop(pause_flag);
+            drop(packet_arrived_flag);
+        });
+        loop {
+            let mut buffer = Vec::<Packet>::new();
+            //let timer_flag_clone = timer_flag.clone();
+            // TODO: maybe add timestamp to report filename? Or folder is better?
+            let pathname = format!("{}-{}.txt", settings.filename, index);
+            let csv_pathname = format!("{}-{}.csv", settings.filename, index);
+            let mut csv_wrt = WriterBuilder::new().has_headers(false).from_path(csv_pathname).unwrap();
+            csv_wrt.write_record(
+                &["interface", "src_addr", "dest_addr",
+                    "res_name", "src_port", "dest_port", "transport", "application",
+                    "tot_bytes", "start_time", "stop_time"]
+            ).unwrap();
+            let path = Path::new(&pathname);
             while let Ok(packet) = rx_report.recv() {
                 buffer.push(packet);
                 let mut flag = timer_flag.lock().unwrap();
-                if *flag {
+                if *flag{
                     *flag = false;
                     drop(flag);
                     break;
@@ -126,6 +204,7 @@ fn main() {
     });
 
     // joining the threads as a last thing to do
+    pause_thread.join().unwrap();
     sniffing_thread.join().unwrap();
     parsing_thread.join().unwrap();
     report_thread.join().unwrap();
