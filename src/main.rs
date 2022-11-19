@@ -6,31 +6,27 @@ use std::process;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::channel;
 
-use std::fs::File;
 use std::path::Path;
 use std::io::Write;
 use std::io;
 use::packet_swiffer::menu::menu;
 
-use std::net::IpAddr;
-
 use pcap::{Device, Capture};
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 use packet_swiffer::report::{produce_hashmap, ReportWriter, setup_directory};
-
+use csv::WriterBuilder;
 
 use clap::Parser;
-use pcap::{Device, Capture};
 
 fn main() {
 
     let args = Args::parse();
     let interface_name = args.interface;
     let promisc_mode = args.promisc;
-    let report_delay = args.timeout;
+    let _report_delay = args.timeout;
     let report_fn = args.filename;
-    let list_mode = args.list;
+    let _list_mode = args.list;
     let csv_mode = args.csv;
     let list_mode = args.list;
     
@@ -153,6 +149,7 @@ fn main() {
         let timer = timer::Timer::new();
         let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
+        let filename = format!("{}", report_fn);
         let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
             let (lock, _cvar) = &*pair3;
             let packet_arrived_flag = packet_arrived_report_clone.lock().unwrap();
@@ -165,6 +162,7 @@ fn main() {
             drop(pause_flag);
             drop(packet_arrived_flag);
         });
+        let dirname = setup_directory(&filename);
         loop {
             let mut buffer = Vec::<Packet>::new();
             //let timer_flag_clone = timer_flag.clone();
@@ -177,7 +175,7 @@ fn main() {
                     "res_name", "src_port", "dest_port", "transport", "application",
                     "tot_bytes", "start_time", "stop_time"]
             ).unwrap();
-            let path = Path::new(&pathname);
+            let _path = Path::new(&pathname);
             while let Ok(packet) = rx_report.recv() {
                 buffer.push(packet);
                 let mut flag = timer_flag.lock().unwrap();
