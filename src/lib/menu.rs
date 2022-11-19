@@ -127,7 +127,7 @@ pub fn menu() -> Settings {
             }
         }
     }
-    let mut settings = Settings {
+    let settings = Settings {
         filters: parse_filter(filters),
         csv: csv,
         timeout: timeout,
@@ -152,17 +152,17 @@ pub fn print_filter() -> Filter{
     let mut buffer = String::new();
 
     let mut vec_ip_source: Vec<String> = Vec::new();
-    let mut ip_source = String::new();
+    //let mut ip_source = String::new();
     let mut vec_ip_dest: Vec<String> = Vec::new();
-    let mut ip_dest = String::new();
+    //let mut ip_dest = String::new();
     let mut vec_port_source: Vec<String> = Vec::new();
-    let mut port_source = String::new();
+    //let mut port_source = String::new();
     let mut vec_port_dest: Vec<String> = Vec::new();
-    let mut port_dest = String::new();
+    //let mut port_dest = String::new();
     let mut vec_transport_protocol: Vec<String> = Vec::new();
-    let mut transport_protocol = String::new();
+    //let mut transport_protocol = String::new();
 
-    let mut filter = Filter::new();
+    let filter = Filter::new();
     loop {
         filter_menu();
         buffer.clear();
@@ -190,13 +190,13 @@ pub fn print_filter() -> Filter{
             }
             "0" => {
 
-                ip_source = vec_ip_source.join(" or ");
-                ip_dest = vec_ip_dest.join(" or ");
-                port_source = vec_port_source.join(" or ");
-                port_dest = vec_port_dest.join(" or ");
-                transport_protocol = vec_transport_protocol.join(" or ");                
+                let ip_source = vec_ip_source.join(" or ");
+                let ip_dest = vec_ip_dest.join(" or ");
+                let port_source = vec_port_source.join(" or ");
+                let port_dest = vec_port_dest.join(" or ");
+                let transport_protocol = vec_transport_protocol.join(" or ");                
 
-                filter = Filter{
+                let _filter = Filter{
                     ip_source: ip_source,
                     ip_dest: ip_dest,
                     port_source: port_source,
@@ -315,7 +315,7 @@ pub fn check_ip_address(string: &String) -> bool {
     let mut space = true;
     let splitted: Vec<&str> = string.trim().split(".").collect();
     for elem in &splitted {
-        let mut number = elem.parse::<i32>();
+        let number = elem.parse::<i32>();
         if number.is_ok() {
             if number.as_ref().unwrap() > &255 || number.unwrap() < 0 {
                 space = false;

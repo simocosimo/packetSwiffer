@@ -11,7 +11,6 @@ use std::fs::File;
 use std::path::Path;
 use std::io::Write;
 use std::io;
-use::packet_swiffer::menu::Settings;
 use::packet_swiffer::menu::menu;
 
 use std::net::IpAddr;
@@ -53,13 +52,12 @@ fn main() {
     let args = Args::parse();
     let interface_name = args.interface;
     let promisc_mode = args.promisc;
-    let report_delay = args.timeout;
-    let report_fm = args.filename;
+    //let report_delay = args.timeout;
+    //let report_fm = args.filename;
     let list_mode = args.list;
     
     // Print menu
-    let mut settings = Settings::new();
-    settings = menu();
+    let settings = menu();
     
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
@@ -104,13 +102,13 @@ fn main() {
 
     // Thread used to get packets (calls next() method)
     let sniffing_thread = thread::spawn(move | | {
-        let (lock, cvar) = &*pair;
+        let (lock, _cvar) = &*pair;
         println!("Premi il tasto P per mettere in pausa lo sniffing");
         if settings.filters != "" {
             cap.filter(&settings.filters, false).unwrap();
         }
         while let Ok(packet) = cap.next_packet() {
-            let mut pause = lock.lock().unwrap();
+            let pause = lock.lock().unwrap();
             let owned_packet = packet.to_owned();
             if !*pause {
                 tx_thread.send(owned_packet.to_vec()).unwrap();
@@ -121,7 +119,7 @@ fn main() {
 
     // Thread used to pause/resume
     let pause_thread = thread::spawn(move || {
-        let (lock, cvar) = &*pair2;
+        let (lock, _cvar) = &*pair2;
         let mut buffer = String::new();
         loop {
             buffer.clear();
@@ -182,9 +180,9 @@ fn main() {
         let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
         let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
-            let (lock, cvar) = &*pair3;
+            let (lock, _cvar) = &*pair3;
             let packet_arrived_flag = packet_arrived_report_clone.lock().unwrap();
-            let mut pause_flag = lock.lock().unwrap();
+            let pause_flag = lock.lock().unwrap();
             if *pause_flag == false && *packet_arrived_flag == true {
                 let mut flag = timer_flag_clone.lock().unwrap();
                 *flag = true;
@@ -195,7 +193,7 @@ fn main() {
         });
         loop {
             let mut buffer = Vec::<Packet>::new();
-            let timer_flag_clone = timer_flag.clone();
+            //let timer_flag_clone = timer_flag.clone();
             // TODO: maybe add timestamp to report filename? Or folder is better?
             let pathname = format!("{}-{}.txt", settings.filename, index);
             let csv_pathname = format!("{}-{}.csv", settings.filename, index);
