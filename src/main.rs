@@ -6,7 +6,6 @@ use std::process;
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::channel;
 
-use std::path::Path;
 use std::io::Write;
 use std::io;
 use::packet_swiffer::menu::menu;
@@ -15,7 +14,6 @@ use pcap::{Device, Capture};
 use packet_swiffer::parser::{handle_ethernet_frame, Packet};
 use packet_swiffer::args::Args;
 use packet_swiffer::report::{produce_hashmap, ReportWriter, setup_directory};
-use csv::WriterBuilder;
 
 use clap::Parser;
 
@@ -165,17 +163,7 @@ fn main() {
         let dirname = setup_directory(&filename);
         loop {
             let mut buffer = Vec::<Packet>::new();
-            //let timer_flag_clone = timer_flag.clone();
-            // TODO: maybe add timestamp to report filename? Or folder is better?
-            let pathname = format!("{}-{}.txt", settings.filename, index);
-            let csv_pathname = format!("{}-{}.csv", settings.filename, index);
-            let mut csv_wrt = WriterBuilder::new().has_headers(false).from_path(csv_pathname).unwrap();
-            csv_wrt.write_record(
-                &["interface", "src_addr", "dest_addr",
-                    "res_name", "src_port", "dest_port", "transport", "application",
-                    "tot_bytes", "start_time", "stop_time"]
-            ).unwrap();
-            let _path = Path::new(&pathname);
+            
             while let Ok(packet) = rx_report.recv() {
                 buffer.push(packet);
                 let mut flag = timer_flag.lock().unwrap();
