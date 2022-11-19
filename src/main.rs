@@ -24,15 +24,12 @@ fn main() {
     let promisc_mode = args.promisc;
     let report_fn = args.filename;
     let list_mode = args.list;
-    
-    // Print menu
-    let settings = menu();
-    
+
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
 
     // Handle list mode
-    if list_mode {
+    if list_mode && interface_name == "listview__".to_string() {
         println!("The following interfaces are available");
         println!("{0: <20} | {1: <20}", "Name", "Description");
         println!("---------------------------------------------------------------------");
@@ -41,7 +38,16 @@ fn main() {
         process::exit(0);
     }
 
-    println!("Promisc mode: {}", promisc_mode);
+    if !list_mode && interface_name == "listview__".to_string() {
+        eprintln!("Error - Specify at least one of the following arguments\n\t-i, --interface:\tName of the interface to be used for the sniffing");
+        eprintln!("\t-l, --list:\t\tShow the net interfaces present in the system without launching the sniffing");
+        process::exit(1);
+    }
+
+    // Print menu
+    let settings = menu();
+
+    // println!("Promisc mode: {}", promisc_mode);
     let interface = interfaces
         .into_iter()
         .filter(|i| i.name == interface_name)
@@ -145,6 +151,7 @@ fn main() {
         let timer_flag_clone = timer_flag.clone();
         let mut index = 0;
         let filename = format!("{}", settings.filename);
+
         let _guard_timer = timer.schedule_repeating(chrono::Duration::seconds(settings.timeout.into()), move || {
             let (lock, _cvar) = &*pair3;
             let packet_arrived_flag = packet_arrived_report_clone.lock().unwrap();
@@ -157,7 +164,10 @@ fn main() {
             drop(pause_flag);
             drop(packet_arrived_flag);
         });
+
+        // Create the directory for the sniffing reports
         let dirname = setup_directory(&filename);
+
         loop {
             let mut buffer = Vec::<Packet>::new();
             

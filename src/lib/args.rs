@@ -12,7 +12,7 @@ pub struct Args {
     pub filename: String,
 
     /// Name of the interface to be used for the sniffing
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "listview__")]
     pub interface: String,
 
     /// Set the interface in promiscuous mode
