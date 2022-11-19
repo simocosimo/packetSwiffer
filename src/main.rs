@@ -107,11 +107,11 @@ fn main() {
                     // println!("Controllo a pause_thread");
                     if *pause == true {
                         *pause = false;
-                        println!("Sniffing ripreso!");
+                        println!("Sniffing resumed!");
                     }
                     else {
                         *pause = true;
-                        println!("Sniffing stoppato!");
+                        println!("Sniffing paused!");
                     }
                     io::stdout().flush().unwrap();
                     drop(pause);
