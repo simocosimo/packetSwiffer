@@ -54,7 +54,7 @@ impl Settings {
 }
 
 pub fn print_index(settings: &Vec<String>) -> () {
-    let mut index = 4;
+    let mut index = 3;
     //print!("{}[2J", 27 as char);
     println!("Packet Swiffer v.1.0");
     println!("Author: Barletta Francesco Pio, Cosimo Simone, Ferla Damiano");
@@ -62,7 +62,6 @@ pub fn print_index(settings: &Vec<String>) -> () {
     println!("\n");
     println!("1.\t Start Sniffing");
     println!("2.\t Set Filters");
-    println!("3.\t CSV mode");
     for setting in settings {
         println!("{}.\t {}", index, setting);
         index += 1;
@@ -86,6 +85,9 @@ pub fn menu() -> Settings {
     if args.list == false {
         conditional_settings.push("Show Interfaces".to_string());
     }
+    if args.csv == false {
+        conditional_settings.push("CSV Mode".to_string());
+    }
     let mut filters = Filter::new();
     let mut csv = args.csv;
     let mut timeout = args.timeout;
@@ -103,17 +105,6 @@ pub fn menu() -> Settings {
                 filters = print_filter();
             }
             "3" => {
-                println!("CSV mode? (Y/N)");
-                buffer.clear();
-                io::stdin().read_line(&mut buffer).expect("Failed to read line");
-                if buffer.trim() == "Y" {
-                    csv = true;
-                }
-                else {
-                    csv = false;
-                }
-            }
-            "4" => {
                 if conditional_settings[0] == "Set Timeout" {
                     timeout = set_timeout();
                 }
@@ -123,17 +114,65 @@ pub fn menu() -> Settings {
                 else if conditional_settings[0] == "Show Interfaces" {
                     print_interface();
                 }
+                else if conditional_settings[0] == "CSV Mode" {
+                    println!("CSV mode? (Y/N)");
+                    buffer.clear();
+                    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+                    if buffer.trim() == "Y" {
+                        csv = true;
+                    }
+                    else {
+                        csv = false;
+                    }
+                }
             }
-            "5" => {
+            "4" => {
                 if conditional_settings[1] == "Set Filename" {
                     filename = set_filename();
                 }
                 else if conditional_settings[1] == "Show Interfaces" {
                     print_interface();
                 }
+                else if conditional_settings[1] == "CSV Mode" {
+                    println!("CSV mode? (Y/N)");
+                    buffer.clear();
+                    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+                    if buffer.trim() == "Y" {
+                        csv = true;
+                    }
+                    else {
+                        csv = false;
+                    }
+                }
+                
+            }
+            "5" => {
+                if conditional_settings[2] == "Show interfaces" {
+                    print_interface();
+                }
+                else if conditional_settings[2] == "CSV Mode" {
+                    println!("CSV mode? (Y/N)");
+                    buffer.clear();
+                    io::stdin().read_line(&mut buffer).expect("Failed to read line");
+                    if buffer.trim() == "Y" {
+                        csv = true;
+                    }
+                    else {
+                        csv = false;
+                    }
+                }
+                
             }
             "6" => {
-                print_interface();
+                println!("CSV mode? (Y/N)");
+                buffer.clear();
+                io::stdin().read_line(&mut buffer).expect("Failed to read line");
+                if buffer.trim() == "Y" {
+                    csv = true;
+                }
+                else {
+                    csv = false;
+                }
             }
             _ => {
                 println!("Wrong command.");
