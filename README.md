@@ -23,6 +23,8 @@ The report is organized by source and destination port and address, and shows in
 - ### [Packet](./docs/struct/packet.md)
 - ### [ReportHeader](./docs/struct/reportHeader.md)
 - ### [Report](./docs/struct/report.md)
+- ### [Filter](./docs/struct/filter.md)
+- ### [Settings](./docs/struct/settings.md)
 
 ## Enum
 
