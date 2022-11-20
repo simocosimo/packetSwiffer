@@ -25,6 +25,7 @@ The report is organized by source and destination port and address, and shows in
 - ### [Report](./docs/struct/report.md)
 - ### [Filter](./docs/struct/filter.md)
 - ### [Settings](./docs/struct/settings.md)
+- ### [Args](./docs/struct/args.md)
 
 ## Enum
 
