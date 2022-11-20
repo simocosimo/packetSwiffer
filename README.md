@@ -23,10 +23,43 @@ The report is organized by source and destination port and address, and shows in
 - ### [Packet](./docs/struct/packet.md)
 - ### [ReportHeader](./docs/struct/reportHeader.md)
 - ### [Report](./docs/struct/report.md)
+- ### [Filter](./docs/struct/filter.md)
+- ### [Settings](./docs/struct/settings.md)
 
 ## Enum
 
 - ### [Error](./docs/enum/error.md)
+
+## Functions
+
+### args.rs
+
+### lib.rs
+
+### menu.rs
+* `pub fn print_index(settings: &Vec<String>) -> ()`: Print all index options.
+* `pub fn menu() -> Settings`: Main dashboard. Here you can choose all different options and return a `Settings` struct.
+* `pub fn filter_menu() -> () `: Print all filter options.
+* `pub fn print_filter() -> Filter`: Dashboard where you can choose which filter you want to add. Return a `Filter` struct.
+* `pub fn filter_ip_source() -> String`: Acquire source ip from I/O (keyboard).
+* `pub fn filter_ip_dest() -> String`: Acquire destination ip from I/O (keyboard).
+* `pub fn filter_port_source() -> String`: Acquire source port from I/O (keyboard).
+* `pub fn filter_port_dest() -> String`: Acquire destination port from I/O (keyboard).
+* `pub fn filter_transport_protocol() -> String`: Acquire transport protocol from I/O (keyboard).
+* `pub fn parse_filter(filter: Filter) -> String`: Convert a `Filter` struct into a `String`.
+* `pub fn check_transport_protocol(string: &String) -> bool`: Check if the user has correctly wrote the transport protocol. Written transport protocol must belong to this set: (**icmp**, **icmp6**, **igmp**, **igrp**, **pim**, **ah**, **esp**, **vrrp**, **udp**, **tcp**).
+* `pub fn check_ip_address(string: &String) -> bool`: Check if the user has correctly wrote an ip address. 
+* `pub fn check_port_number(string: &String) -> bool`: Check if the user has correctly wrote a port number. The port number must be between 0 and 65535.
+* `pub fn set_timeout() -> i64`: Acquire timeout from I/O (keyboard).
+* `pub fn set_filename() -> String`: Acquire the desidered name in which you want to save the report from I/O (keyboard).
+* `pub fn print_interface() -> ()`: List all the available interfaces.
+
+
+### parser.rs
+
+### report.rs
+
+### utils.rs
 
 ## Errors
 Most public functions return a `Result`, the possible errors are the following:
