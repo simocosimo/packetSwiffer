@@ -32,10 +32,6 @@ The report is organized by source and destination port and address, and shows in
 
 ## Functions
 
-### args.rs
-
-### lib.rs
-
 ### menu.rs
 * `pub fn print_index(settings: &Vec<String>) -> ()`: Print all index options.
 * `pub fn menu() -> Settings`: Main dashboard. Here you can choose all different options and return a `Settings` struct.
@@ -56,10 +52,21 @@ The report is organized by source and destination port and address, and shows in
 
 
 ### parser.rs
+* `fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, Error>`: Manage UDP Packet
+* `fn handle_icmp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, Error>`: Manage ICMP Packet
+* `fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) -> Result<Packet, Error>`: Manage TCP Packet
+* `fn handle_transport_protocol(interface_name: &str,source: IpAddr,destination: IpAddr,protocol: IPProtocol,packet: &[u8],) -> Result<Packet, Error>`: Recognize Transport Protocol
+* `fn handle_ipv4_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, Error> `: Manage IPv4 Packet
+* `fn handle_ipv6_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, Error> `: Manage IPv6 Packet
+* `fn handle_arp_packet(interface_name: &str, packet: &[u8]) -> Result<Packet, Error> `: Manage ARP Packet
+* `pub fn handle_ethernet_frame(interface: &Device, ethernet: &[u8]) -> Result<Packet, Error>`: Manage Ethernet frame
 
 ### report.rs
 
 ### utils.rs
+* `pub fn mac_to_str(addr: MacAddress) -> String`: Convert a MAC Address as a String
+* `pub fn tcp_l7(port: u16) -> String`: Recognize Application Layer of a TCP Packet
+* `pub fn udp_l7(port: u16) -> String`: Recognize Application Layer of a UDP Packet
 
 ## Errors
 Most public functions return a `Result`, the possible errors are the following:
