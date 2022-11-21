@@ -63,6 +63,8 @@ The report is organized by source and destination port and address, and shows in
 * `pub fn handle_ethernet_frame(interface: &Device, ethernet: &[u8]) -> Result<Packet, Error>`: Manage Ethernet frame
 
 ### report.rs
+* `pub fn setup_directory(filename: &str) -> String`: create the directory with specified filename, adding a timestamp to the folder name
+* `pub fn produce_hashmap(buffer: Vec<Packet>) -> HashMap<ReportHeader, Report>`: create the hashmap starting from a buffer of packets. Used when the Report structure are created
 
 ### utils.rs
 * `pub fn mac_to_str(addr: MacAddress) -> String`: Convert a MAC Address as a String
