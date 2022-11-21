@@ -40,6 +40,7 @@ You have to run the application with the `--interface` flag (to start the sniffi
 
 - ### [Packet](./docs/struct/packet.md)
 - ### [ReportHeader](./docs/struct/reportHeader.md)
+- ### [ReportWriter](./docs/struct/reportWriter.md)
 - ### [Report](./docs/struct/report.md)
 - ### [Filter](./docs/struct/filter.md)
 - ### [Settings](./docs/struct/settings.md)
@@ -48,6 +49,7 @@ You have to run the application with the `--interface` flag (to start the sniffi
 ## Enum
 
 - ### [Error](./docs/enum/error.md)
+- ### [Reporter](./docs/enum/reporter.md)
 
 ## Functions
 
