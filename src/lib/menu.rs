@@ -344,9 +344,12 @@ pub fn filter_transport_protocol() -> String {
             println!("Transport protocol error");
         }
         else {
+            buffer = "\\".to_owned() + &buffer;
+            /*
             if buffer == "tcp\n" || buffer == "udp\n" || buffer == "icmp\n" {
                 buffer = "\\".to_owned() + &buffer;
             }
+            */
             break;
         }
     }
