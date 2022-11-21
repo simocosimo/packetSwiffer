@@ -193,11 +193,11 @@ pub fn filter_menu() -> () {
     //print!("{}[2J", 27 as char);
     println!("Filter settings:");
     println!("\n");
-    println!("1.\t Filtra per indirizzo IP sorgente");
-    println!("2.\t Filtra per indirizzo IP destinazione");
-    println!("3.\t Filtra per porta sorgente");
-    println!("4.\t Filtra per porta destinazione");
-    println!("5.\t Filtra per protocollo di trasporto");
+    println!("1.\t Filter by source IP");
+    println!("2.\t Filter by destination IP");
+    println!("3.\t Filter by source port");
+    println!("4.\t Filter by destination port");
+    println!("5.\t Filter by transport protocol");
     println!("0.\t Back to menu");
 }
 
@@ -268,12 +268,12 @@ pub fn filter_ip_source() -> String {
     let mut buffer = String::new();
     loop {
         //print!("{}[2J", 27 as char);
-        println!("Filtra per indirizzo IP sorgente: \n");
-        println!("Inserisci indirizzo IP sorgente");
+        println!("Filter by source IP: \n");
+        println!("Insert source IP");
         buffer.clear();
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
         if !check_ip_address(&buffer) {
-            println!("Errore nell'indirizzo IP");
+            println!("Error in the IP address");
         }
         else {
             break;
@@ -285,12 +285,12 @@ pub fn filter_ip_dest() -> String {
     let mut buffer = String::new();
     loop {
         //print!("{}[2J", 27 as char);
-        println!("Filtra per indirizzo IP destinazione: \n");
-        println!("Inserisci indirizzo IP destinazione");
+        println!("Filter by destination IP: \n");
+        println!("Insert destination IP");
         buffer.clear();
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
         if !check_ip_address(&buffer) {
-            println!("Errore nell'indirizzo IP");
+            println!("Error in the IP address");
         }
         else {
             break;
@@ -302,12 +302,12 @@ pub fn filter_port_source() -> String {
     let mut buffer = String::new();
     loop {
         //print!("{}[2J", 27 as char);
-        println!("Filtra per porta sorgente: \n");
-        println!("Inserisci porta sorgente");
+        println!("Filter by source port: \n");
+        println!("Insert source port");
         buffer.clear();
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
         if !check_port_number(&buffer) {
-            println!("Errore nella porta");
+            println!("Port error");
         }
         else {
             break;
@@ -318,13 +318,13 @@ pub fn filter_port_source() -> String {
 pub fn filter_port_dest() -> String {
     let mut buffer = String::new();
     loop {
-        print!("{}[2J", 27 as char);
-        println!("Filtra per porta destinazione: \n");
-        println!("Inserisci porta destinazione");
+        //print!("{}[2J", 27 as char);
+        println!("Filter by destination port: \n");
+        println!("Insert destination port");
         buffer.clear();
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
         if !check_port_number(&buffer) {
-            println!("Errore nella porta");
+            println!("Port error");
         }
         else {
             break;
@@ -336,12 +336,12 @@ pub fn filter_transport_protocol() -> String {
     let mut buffer = String::new();
     loop {
         //print!("{}[2J", 27 as char);
-        println!("Filtra per protocollo di trasporto: \n");
-        println!("Inserisci protocollo di trasporto");
+        println!("Filter by transport protocol: \n");
+        println!("Insert transport protocol");
         buffer.clear();
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
         if !check_transport_protocol(&buffer) {
-            println!("Errore nel tipo di protocollo digitato.");
+            println!("Transport protocol error");
         }
         else {
             if buffer == "tcp\n" || buffer == "udp\n" || buffer == "icmp\n" {
@@ -392,7 +392,7 @@ pub fn check_port_number(string: &String) -> bool {
 pub fn set_timeout() -> i64 {
     let mut buffer = String::new();
     loop {
-        println!("Inserisci timeout: ");
+        println!("Insert timeout: ");
         io::stdin().read_line(&mut buffer).expect("Failed to read line");
         if buffer.trim().parse::<i64>().is_ok() {
             println!("{}", buffer);
@@ -403,7 +403,7 @@ pub fn set_timeout() -> i64 {
 }
 pub fn set_filename() -> String {
     let mut buffer = String::new();
-    println!("Inserisci il nome con cui vuoi salvare il report: ");
+    println!("Insert name you want to save the report: ");
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
     return buffer.trim().to_string();
 }
@@ -415,6 +415,6 @@ pub fn print_interface() -> () {
     interfaces.into_iter()
         .for_each(|i| println!("{0: <20} | {1: <20}", i.name, i.desc.unwrap_or("None".to_string())));
     let mut buffer = String::new();
-    println!("Premi un bottone per tornare al menù principale");
+    println!("Press enter to go back to menu");
     io::stdin().read_line(&mut buffer).expect("Failed to read line");
 }
