@@ -28,6 +28,8 @@ fn main() {
     // Find the network interface with the provided name
     let interfaces = Device::list().unwrap();
 
+    // this is a test
+
     // Handle list mode
     if list_mode && interface_name == "listview__".to_string() {
         println!("The following interfaces are available");
