@@ -1,6 +1,3 @@
-<p align="center">
-  <img width="550" height="300" src="logo.png">
-</p>
 <h1 align="center">packetSwiffer</h1>
 
 ## Introduction
